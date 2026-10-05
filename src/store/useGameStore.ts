@@ -1,34 +1,37 @@
 import { create } from 'zustand';
 import { DockBay, Truck, Forklift, Carrier, HubLocation } from '../types/game';
+import { ARRIVAL_SECONDS, DOCK_SECONDS, DEPARTURE_SECONDS, PALLET_SECONDS } from '../utils/motion';
+import { useEmpireStore, totalStock, GOODS } from './useEmpireStore';
+import { Goods } from '../types/empire';
 
 export const HUBS: HubLocation[] = [
   {
     id: 'WH-01',
     code: 'WH-01',
-    name: 'Riverside Hub',
-    location: '12 Riverside Dr, Newark NJ',
-    description: 'Standard Distribution Center with ambient storage.',
-    meta: '78% full · 1/2 docked',
+    name: 'Kho Bình Dương',
+    location: 'Khu công nghiệp Bình Dương',
+    description: 'Kho khởi nghiệp và xưởng đóng gói nông sản.',
+    meta: 'Trụ sở chính',
     totalBays: 2,
     multiplier: 1.0,
   },
   {
     id: 'WH-04',
     code: 'WH-04',
-    name: 'Southfield Cross-Dock',
-    location: '88 Logistics Parkway, Detroit MI',
-    description: 'High velocity transshipment & sorting facility.',
-    meta: '38% full · 2/6 docked',
+    name: 'Cảng Hải Phòng',
+    location: 'Trung tâm logistics Hải Phòng',
+    description: 'Chi nhánh xuất khẩu và linh kiện điện tử.',
+    meta: 'Mạng lưới phía Bắc',
     totalBays: 4,
     multiplier: 1.25,
   },
   {
     id: 'WH-03',
     code: 'WH-03',
-    name: 'Eastport Cold Chain',
-    location: '7 Harbor Way, Elizabeth NJ',
-    description: 'Specialized deep freeze & perishable cargo storage.',
-    meta: '71% full · 2/3 docked',
+    name: 'Trung tâm Cần Thơ',
+    location: 'Trung tâm nông sản Cần Thơ',
+    description: 'Chi nhánh lúa gạo và phân phối miền Tây.',
+    meta: 'Mạng lưới miền Tây',
     totalBays: 3,
     multiplier: 1.5,
   },
@@ -70,8 +73,8 @@ const INITIAL_DOCKS: DockBay[] = [
 ];
 
 const INITIAL_FORKLIFTS: Forklift[] = [
-  { id: 'fl-1', name: 'FL-01', status: 'idle', speed: 4.5, capacity: 1, carryingPallet: false, x: -2, z: 2 },
-  { id: 'fl-2', name: 'FL-02', status: 'idle', speed: 4.5, capacity: 1, carryingPallet: false, x: 2, z: 2 },
+  { id: 'fl-1', name: 'FL-01', status: 'idle', speed: 4.5, capacity: 1, carryingPallet: false, x: -9.35, z: -10 },
+  { id: 'fl-2', name: 'FL-02', status: 'idle', speed: 4.5, capacity: 1, carryingPallet: false, x: -1.35, z: -10 },
 ];
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -83,32 +86,37 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedEntityId: null,
   selectedEntityType: null,
   currentHub: 'WH-01',
-  docks: INITIAL_DOCKS,
+  docks: INITIAL_DOCKS.map((dock, index) => index === 0
+    ? { ...dock, status: 'unloading' as const, currentTruckId: 'trk-init-1' }
+    : { ...dock }),
   trucks: [
     {
       id: 'trk-init-1',
-      plate: 'TRK-2051',
+      plate: '61C-205.51',
       carrier: 'WareTrack',
       status: 'unloading',
       dockId: 'bay-1',
       palletsTotal: 6,
       palletsUnloaded: 2,
-      cargoType: 'Cardboard Box (M)',
-      destination: 'Philadelphia, PA',
+      cargoType: 'Gạo',
+      goods: 'rice',
+      destination: 'Bình Dương',
       eta: 13,
       valueReward: 1800,
       progress: 2.0,
     },
     {
       id: 'trk-init-2',
-      plate: 'TRK-2481',
+      plate: '65C-248.81',
       carrier: 'Cargoviva',
       status: 'en_route',
       dockId: undefined,
+      queueSlot: 0,
       palletsTotal: 6,
       palletsUnloaded: 0,
-      cargoType: 'Plastic Container',
-      destination: 'Southfield Cross-Dock',
+      cargoType: 'Cà phê',
+      goods: 'coffee',
+      destination: 'Cần Thơ',
       eta: 45,
       valueReward: 2200,
       progress: 0,
@@ -119,6 +127,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastSpawnTime: 0,
 
   resetGame: () => {
+    useEmpireStore.getState().resetEmpire();
     set({
       cash: 45000,
       reputation: 96.6,
@@ -145,39 +154,41 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   setHub: (hubId) => {
-    set({ currentHub: hubId });
+    if (useEmpireStore.getState().unlockedHubs.includes(hubId)) set({ currentHub: hubId });
   },
 
   spawnTruck: (custom) => {
+    if (get().trucks.length >= 8) return;
     const carriers: Carrier[] = ['WareTrack', 'Nordline', 'Cargoviva', 'Bluepeak'];
-    const cargoTypes = [
-      'Cardboard Box (M)',
-      'Plastic Container',
-      'Safety Helmet',
-      'Frozen Peas 10 kg',
-      'Nitrile Gloves',
-    ];
     const carrier = custom?.carrier || carriers[Math.floor(Math.random() * carriers.length)];
-    const plate = custom?.plate || `TRK-${Math.floor(2000 + Math.random() * 8000)}`;
-    const cargoType = custom?.cargoType || cargoTypes[Math.floor(Math.random() * cargoTypes.length)];
+    const plate = custom?.plate || `61C-${Math.floor(100 + Math.random() * 800)}.${Math.floor(10 + Math.random() * 89)}`;
 
+    const goods = custom?.goods ?? (get().currentHub === 'WH-04' ? 'electronics' : get().currentHub === 'WH-03' ? 'rice' : (['rice', 'coffee', 'electronics'] as Goods[])[Math.floor(Math.random() * 3)]);
+    const outbound = custom?.direction === 'outbound';
+    const dock = outbound ? get().docks.find(d => d.id === custom?.dockId && d.status === 'available') : undefined;
+    if (outbound && !dock) return;
     const newTruck: Truck = {
       id: custom?.id || `trk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       plate,
       carrier,
-      status: 'en_route',
-      dockId: undefined,
+      status: outbound ? 'completed' : 'en_route',
+      dockId: dock?.id,
+      direction: outbound ? 'outbound' : 'inbound',
+      goods,
+      motionTime: 0,
+      queueSlot: Array.from({ length: 8 }, (_, slot) => slot).find(slot =>
+        !get().trucks.some(truck => truck.status === 'en_route' && (truck.queueSlot ?? 0) === slot)) ?? 0,
       palletsTotal: custom?.palletsTotal || 6,
-      palletsUnloaded: 0,
-      cargoType,
-      destination: custom?.destination || 'Local Cross-Dock Distribution',
+      palletsUnloaded: outbound ? custom?.palletsTotal ?? 6 : 0,
+      cargoType: custom?.cargoType ?? GOODS[goods].label,
+      destination: custom?.destination || 'Trạm phân phối nội vùng',
       eta: 60,
-      valueReward: custom?.valueReward || 1500 + Math.floor(Math.random() * 1000),
+      valueReward: custom?.valueReward ?? 1500 + Math.floor(Math.random() * 1000),
       progress: 0,
-      isVip: custom?.isVip || Math.random() > 0.8,
+      isVip: custom?.isVip ?? Math.random() > 0.8,
     };
 
-    set((state) => ({ trucks: [...state.trucks, newTruck] }));
+    set((state) => ({ trucks: [...state.trucks, newTruck], ...(dock ? { docks: state.docks.map(d => d.id === dock.id ? { ...d, status: 'loading' as const, currentTruckId: newTruck.id } : d) } : {}) }));
   },
 
   unloadPallet: (truckId) => {
@@ -187,6 +198,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (t.id === truckId && t.palletsUnloaded < t.palletsTotal) {
           const nextCount = t.palletsUnloaded + 1;
           earned = 300;
+          useEmpireStore.getState().receiveCargo(t.goods ?? 'rice', 1);
           return {
             ...t,
             palletsUnloaded: nextCount,
@@ -199,7 +211,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return {
         trucks: nextTrucks,
         cash: state.cash + earned,
-        storageCount: Math.min(state.storageMax, state.storageCount + 1),
+      storageCount: totalStock(useEmpireStore.getState().inventory),
       };
     });
   },
@@ -207,9 +219,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   upgradeDock: (dockId) => {
     const state = get();
     const dock = state.docks.find((d) => d.id === dockId);
-    if (!dock) return false;
+    if (!dock || dock.level >= 3) return false;
 
-    const cost = dock.status === 'locked' ? 15000 : 8000;
+    const cost = dock.status === 'locked' ? 15000 : 8000 * dock.level;
     if (state.cash < cost) return false;
 
     set({
@@ -243,7 +255,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       capacity: 1,
       carryingPallet: false,
       x: -4 + idx * 2,
-      z: 2,
+      z: -10,
     };
 
     set({
@@ -254,21 +266,23 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   prioritizeTruck: (truckId) => {
-    set((state) => ({
-      trucks: state.trucks.map((t) =>
-        t.id === truckId ? { ...t, isVip: true, valueReward: t.valueReward + 500 } : t
-      ),
-    }));
+    const state = get();
+    const truck = state.trucks.find(item => item.id === truckId);
+    if (!truck || truck.isVip || truck.status === 'completed' || state.cash < 500) return;
+    set({ cash: state.cash - 500, trucks: state.trucks.map(item => item.id === truckId ? { ...item, isVip: true } : item) });
   },
 
   tickSimulation: (delta) => {
     const { gameSpeed } = get();
     if (gameSpeed === 0) return;
-    const effectiveDelta = Math.min(delta, 0.1) * gameSpeed;
+    const effectiveDelta = Math.min(delta, 0.25) * gameSpeed;
+    useEmpireStore.getState().tickEmpire(effectiveDelta);
 
     set((state) => {
-      let nextTrucks = [...state.trucks];
-      let nextDocks = [...state.docks];
+      let nextTrucks = state.trucks.map((truck) => ({ ...truck }));
+      let nextDocks = state.docks.map((dock) => ({ ...dock }));
+      const nextForklifts = state.forklifts.map((forklift) => ({ ...forklift }));
+      let lastSpawnTime = state.lastSpawnTime;
       let nextCash = state.cash;
       let nextStorage = state.storageCount;
       let nextCompleted = state.totalTrucksCompleted;
@@ -278,92 +292,125 @@ export const useGameStore = create<GameState>((set, get) => ({
       const now = Date.now();
       if (nextTrucks.length < 3 && now - state.lastSpawnTime > 8000 / gameSpeed) {
         const carriers: Carrier[] = ['WareTrack', 'Nordline', 'Cargoviva', 'Bluepeak'];
-        const plate = `TRK-${Math.floor(2000 + Math.random() * 8000)}`;
+        const plate = `61C-${Math.floor(100 + Math.random() * 800)}.${Math.floor(10 + Math.random() * 89)}`;
+        const goods = state.currentHub === 'WH-04' ? 'electronics' : state.currentHub === 'WH-03' ? 'rice' : (['rice', 'coffee', 'electronics'] as Goods[])[nextCompleted % 3];
         nextTrucks.push({
           id: `trk-${now}`,
           plate,
           carrier: carriers[Math.floor(Math.random() * carriers.length)],
           status: 'en_route',
+          queueSlot: Array.from({ length: 8 }, (_, slot) => slot).find(slot =>
+            !nextTrucks.some(truck => truck.status === 'en_route' && (truck.queueSlot ?? 0) === slot)) ?? 0,
           palletsTotal: 6,
           palletsUnloaded: 0,
-          cargoType: 'Cardboard Box (M)',
-          destination: 'Cross-Dock Facility',
+          cargoType: GOODS[goods].label,
+          goods,
+          destination: 'Trạm trung chuyển',
           eta: 40,
           valueReward: 1600,
           progress: 0,
           isVip: Math.random() > 0.75,
         });
-        state.lastSpawnTime = now;
+        lastSpawnTime = now;
       }
 
       // 2. Gán xe en_route vào dock trống
       for (let truck of nextTrucks) {
-        if (truck.status === 'en_route' && !truck.dockId) {
+        if (truck.status === 'en_route' && !truck.dockId &&
+          !nextTrucks.some((item) => item.status === 'docking' || item.status === 'completed')) {
           const freeDock = nextDocks.find((d) => d.status === 'available');
           if (freeDock) {
             truck.dockId = freeDock.id;
             truck.status = 'docking';
-            freeDock.status = 'unloading';
+            truck.motionTime = 0;
+            freeDock.status = 'loading';
             freeDock.currentTruckId = truck.id;
           }
         }
       }
 
-      // 3. Tiến trình dỡ hàng & xe nâng
+      // Only a finished forklift deposit transfers stock and awards pallet revenue.
+      const drivers = useEmpireStore.getState().employees.filter(employee => employee.role === 'driver');
+      for (const [index, forklift] of nextForklifts.entries()) {
+        if (index >= drivers.length) { forklift.status = 'idle'; forklift.carryingPallet = false; continue; }
+        let truck = nextTrucks.find((item) => item.id === forklift.targetTruckId && item.status === 'unloading');
+        if (!truck) {
+          truck = nextTrucks.find((item) => item.status === 'unloading' &&
+            !nextForklifts.some((worker) => worker.id !== forklift.id && worker.targetTruckId === item.id));
+          forklift.targetTruckId = truck?.id;
+          forklift.targetDockId = truck?.dockId;
+          forklift.taskTime = 0;
+        }
+        if (!truck || nextStorage >= state.storageMax) {
+          forklift.status = 'idle';
+          forklift.carryingPallet = false;
+          continue;
+        }
+        const dock = nextDocks.find((item) => item.id === truck.dockId);
+        const rate = (dock?.hasLeveller ? 1.25 : 1) * (1 + Math.max(0, (dock?.level ?? 1) - 1) * .15) * (truck.isVip ? 1.2 : 1) * (forklift.speed / 4.5) * (1 + (drivers[index].level - 1) * .15) * (.5 + drivers[index].energy / 200);
+        forklift.taskTime = (forklift.taskTime ?? 0) + effectiveDelta * rate;
+        forklift.status = forklift.taskTime < 3 ? 'moving_to_truck' : forklift.taskTime < 4 ? 'picking'
+          : forklift.taskTime < 7 ? 'carrying' : 'depositing';
+        forklift.carryingPallet = forklift.taskTime >= 3 && forklift.taskTime < PALLET_SECONDS;
+        if (forklift.taskTime >= PALLET_SECONDS) {
+          forklift.taskTime -= PALLET_SECONDS;
+          truck.palletsUnloaded += 1;
+          truck.progress = truck.palletsUnloaded;
+          nextCash += 280;
+          nextStorage += 1;
+          useEmpireStore.getState().receiveCargo(truck.goods ?? 'rice', 1);
+          if (dock) dock.storedPallets = (dock.storedPallets ?? 0) + 1;
+          if (truck.palletsUnloaded >= truck.palletsTotal) {
+            truck.status = 'completed';
+            truck.motionTime = 0;
+            nextCash += truck.valueReward;
+            nextCompleted += 1;
+            nextReputation = Math.min(100, nextReputation + 0.2);
+            forklift.targetTruckId = undefined;
+            forklift.targetDockId = undefined;
+            forklift.status = 'idle';
+            forklift.carryingPallet = false;
+          }
+        }
+      }
+
       nextTrucks = nextTrucks
         .map((truck) => {
+          if (truck.status === 'completed') {
+            if (nextTrucks.some(item => item.status === 'docking')) return truck;
+            truck.motionTime = (truck.motionTime ?? 0) + effectiveDelta;
+            if (truck.motionTime >= DEPARTURE_SECONDS) {
+              const dock = nextDocks.find((item) => item.id === truck.dockId);
+              if (dock) { dock.status = 'available'; dock.currentTruckId = undefined; }
+              truck.status = 'departed';
+            }
+            return truck;
+          }
           if (truck.status === 'docking') {
-            return { ...truck, status: 'unloading' as const };
-          }
-
-          if (truck.status === 'unloading') {
-            const dock = nextDocks.find((d) => d.id === truck.dockId);
-            const speedMultiplier = (dock?.hasLeveller ? 1.4 : 1.0) * (truck.isVip ? 1.3 : 1.0);
-            const nextProgress = truck.progress + effectiveDelta * 0.45 * speedMultiplier;
-            const newUnloaded = Math.min(truck.palletsTotal, Math.floor(nextProgress));
-            const deltaUnloaded = newUnloaded - truck.palletsUnloaded;
-
-            if (deltaUnloaded > 0) {
-              nextCash += deltaUnloaded * 280;
-              nextStorage = Math.min(state.storageMax, nextStorage + deltaUnloaded);
+            truck.motionTime = (truck.motionTime ?? 0) + effectiveDelta;
+            if (truck.motionTime >= ARRIVAL_SECONDS + DOCK_SECONDS) {
+              truck.status = 'unloading';
+              const dock = nextDocks.find((item) => item.id === truck.dockId);
+              if (dock) dock.status = 'unloading';
             }
-
-            if (newUnloaded >= truck.palletsTotal) {
-              // Xe dỡ xong
-              nextCash += truck.valueReward;
-              nextCompleted += 1;
-              nextReputation = Math.min(100, nextReputation + 0.2);
-
-              if (dock) {
-                dock.status = 'available';
-                dock.currentTruckId = undefined;
-              }
-              return {
-                ...truck,
-                progress: nextProgress,
-                palletsUnloaded: truck.palletsTotal,
-                status: 'completed' as const,
-              };
-            }
-
-            return {
-              ...truck,
-              progress: nextProgress,
-              palletsUnloaded: newUnloaded,
-            };
           }
-
           return truck;
         })
-        .filter((t) => t.status !== 'completed' || t.progress < t.palletsTotal + 2); // Xe completed sẽ rời bãi
+        .filter((truck) => truck.status !== 'departed');
 
       return {
         trucks: nextTrucks,
-        docks: nextDocks,
+        forklifts: nextForklifts,
+        docks: nextDocks.every((dock, index) =>
+          dock.status === state.docks[index].status &&
+          dock.storedPallets === state.docks[index].storedPallets &&
+          dock.currentTruckId === state.docks[index].currentTruckId)
+          ? state.docks : nextDocks,
         cash: nextCash,
-        storageCount: nextStorage,
+        storageCount: totalStock(useEmpireStore.getState().inventory),
         totalTrucksCompleted: nextCompleted,
         reputation: nextReputation,
+        lastSpawnTime,
       };
     });
   },

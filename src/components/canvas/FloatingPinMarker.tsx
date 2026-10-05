@@ -32,8 +32,7 @@ export const FloatingPinMarker = ({
     <Html
       position={position}
       center
-      distanceFactor={24}
-      zIndexRange={[100, 0]}
+      zIndexRange={[20, 0]}
       style={{ pointerEvents: 'auto' }}
     >
       <div

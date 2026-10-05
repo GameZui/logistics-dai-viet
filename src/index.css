@@ -10,6 +10,130 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* Opaque panels avoid repeatedly blurring the animated WebGL surface. */
+[class*="backdrop-blur"] {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+@media (max-width: 900px) {
+  .brand { display: none !important; }
+}
+
+body { font-family: Inter, 'Segoe UI', sans-serif; }
+button, select { touch-action: manipulation; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.game-toolbar { position:absolute; inset:12px 16px auto; z-index:40; display:flex; align-items:center; gap:20px; padding:12px 16px; border-radius:18px; background:#fff; border:1px solid #dde5ed; box-shadow:0 8px 30px #16344a0d; }
+.brand { display:flex; align-items:center; gap:10px; font-size:19px; font-weight:800; color:#142f46; }
+.brand-icon { display:grid; place-items:center; width:40px; height:40px; background:#176858; color:white; border-radius:12px; }
+.brand small { display:block; font-size:9px; letter-spacing:1.6px; color:#7b8b9b; margin-top:2px; }
+.hub-select { background:#f1f5f8; padding:10px 12px; border-radius:10px; font-size:12px; font-weight:600; min-width:0; }
+.toolbar-actions { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.primary-button { display:flex; align-items:center; justify-content:center; gap:7px; padding:10px 14px; background:#176858; color:white; font-size:12px; font-weight:700; border-radius:10px; }
+.primary-button:hover { background:#115346; }
+.speed-controls { display:flex; background:#eef3f6; padding:3px; border-radius:10px; }
+.speed-controls button { display:grid; place-items:center; min-width:32px; height:31px; border-radius:8px; font-size:12px; font-weight:700; }
+.speed-controls .active { background:#fff; color:#176858; box-shadow:0 2px 5px #18354b12; }
+.kpi-strip { position:absolute; top:94px; left:16px; z-index:30; display:flex; max-width:calc(100vw - 32px); overflow:auto; gap:1px; border-radius:14px; background:#dde5ed; box-shadow:0 4px 14px #16344a08; }
+.kpi-strip > div { background:#ffffffed; padding:10px 18px; flex-shrink:0; }
+.kpi-strip small { display:block; font-size:9px; letter-spacing:1px; font-weight:700; color:#738495; }
+.kpi-strip strong { display:block; font-size:19px; margin-top:3px; color:#203e50; }
+.kpi-strip strong span { font-size:11px; font-weight:500; color:#8394a0; }
+.inspector-panel { position:absolute; right:16px; top:172px; z-index:40; width:300px; max-width:calc(100vw - 32px); max-height:calc(100dvh - 240px); overflow:auto; background:#fff; padding:18px; border:1px solid #dde5ed; border-radius:18px; box-shadow:0 12px 40px #14334818; }
+.panel-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.panel-heading small { font-size:9px; letter-spacing:1px; color:#8394a0; font-weight:700; }
+.panel-heading h2 { font-size:20px; font-weight:800; color:#203e50; margin-top:3px; }
+.panel-heading button { padding:8px; background:#f1f5f8; border-radius:10px; }
+.status-banner { padding:10px; border-radius:10px; background:#e5f3ed; font-size:12px; color:#176858; font-weight:700; }
+.inspector-panel dl { display:grid; grid-template-columns:1fr 1.2fr; gap:13px 8px; font-size:12px; padding:20px 0; }
+.inspector-panel dt { color:#7b8b9b; }
+.inspector-panel dd { text-align:right; font-weight:600; overflow-wrap:anywhere; }
+.panel-note { font-size:10px; color:#8394a0; line-height:1.6; margin-top:14px; }
+.inspector-truck-art { display:block; width:100%; height:126px; object-fit:contain; margin:2px auto 12px; border-radius:12px; background:linear-gradient(145deg,#eef5ec,#fff8e9); }
+.cargo-progress { height:5px; border-radius:10px; background:#e5edf1; margin-bottom:16px; overflow:hidden; }
+.cargo-progress span { display:block; height:100%; background:#28a47e; transition:width .3s; }
+.fleet-panel { position:absolute; bottom:64px; right:16px; z-index:30; width:300px; background:white; border-radius:16px; border:1px solid #dde5ed; overflow:hidden; box-shadow:0 8px 30px #14334812; }
+.fleet-tabs { display:flex; gap:4px; padding:10px; border-bottom:1px solid #eef2f5; }
+.fleet-tabs button { flex:1; padding:8px; border-radius:8px; font-size:11px; font-weight:700; color:#738495; }
+.fleet-tabs .active { background:#e5f3ed; color:#176858; }
+.fleet-rows { max-height:180px; overflow:auto; padding:6px; }
+.fleet-rows > button { display:flex; justify-content:space-between; width:100%; padding:11px 8px; border-radius:8px; font-size:11px; }
+.fleet-rows > button:hover, .fleet-rows .selected { background:#eef7f3; }
+.fleet-rows span { color:#738495; }
+.fleet-rows p { padding:12px; font-size:11px; }
+.fleet-buy { padding:12px; width:100%; font-size:11px; font-weight:700; color:#176858; background:#f3f8f6; }
+.shipment-panel { position:absolute; bottom:64px; left:76px; z-index:30; width:370px; padding:16px; background:white; border:1px solid #dde5ed; border-radius:16px; font-size:11px; }
+.shipment-panel p { color:#8394a0; margin-top:12px; }
+.shipment-stages { display:flex; justify-content:space-between; margin-top:16px; }
+.shipment-stages > div { display:flex; flex-direction:column; align-items:center; gap:5px; color:#97a6b0; }
+.shipment-stages i { display:grid; place-items:center; width:24px; height:24px; background:#eff3f5; border-radius:50%; font-style:normal; font-weight:700; }
+.shipment-stages .done { color:#176858; }
+.shipment-stages .done i { background:#176858; color:white; }
+@media(max-width:800px) { .shipment-panel { display:none; } .game-toolbar { gap:8px; padding:9px; } .hub-select { max-width:42vw; } .primary-button { padding:9px; } .kpi-strip > div { padding:8px 12px; } .kpi-strip strong { font-size:16px; } }
+
+.game-footer { position:absolute; inset:auto 16px 16px; z-index:45; display:flex; align-items:center; justify-content:space-between; gap:8px; pointer-events:none; }
+.game-footer > button { pointer-events:auto; }
+.mission-ribbon { position:absolute; top:164px; left:16px; z-index:30; max-width:calc(100vw - 32px); display:flex; align-items:center; gap:12px; padding:10px 14px; background:#fffaf0; border:1px solid #eadcbd; color:#745d31; border-radius:12px; font-size:11px; font-weight:600; box-shadow:0 3px 12px #49341408; }
+.mission-ribbon span { font-size:9px; letter-spacing:1px; color:#a5833e; font-weight:800; white-space:nowrap; }
+.mission-ribbon b { color:#176858; font-size:16px; }
+.game-toast { position:absolute; left:50%; bottom:74px; transform:translateX(-50%); z-index:70; background:#153e34; color:#fff; padding:13px 20px; border-radius:12px; box-shadow:0 8px 28px #163a3330; font-size:12px; max-width:calc(100vw - 32px); width:max-content; pointer-events:none; }
+.empire-panel { position:absolute; top:164px; right:16px; bottom:72px; z-index:50; width:490px; max-width:calc(100vw - 32px); background:#fbfcfa; border:1px solid #d8e4db; border-radius:20px; box-shadow:0 18px 60px #102e3820; display:flex; flex-direction:column; overflow:hidden; }
+.empire-heading { display:flex; align-items:center; gap:8px; padding:18px 20px 12px; background:white; }
+.empire-heading > div { flex:1; }
+.empire-heading small { font-size:9px; letter-spacing:1.8px; color:#78948a; font-weight:800; }
+.empire-heading h2 { font-size:20px; font-weight:800; color:#214b3e; }
+.empire-heading button { padding:8px; color:#5d7e70; border-radius:10px; background:#f0f5f0; }
+.empire-tabs { display:flex; gap:4px; padding:8px 12px 12px; overflow-x:auto; flex-shrink:0; border-bottom:1px solid #e2e9e0; background:white; }
+.empire-tabs button { display:flex; gap:5px; align-items:center; white-space:nowrap; padding:8px 10px; border-radius:9px; color:#738679; font-size:11px; font-weight:600; }
+.empire-tabs .active { color:#176858; background:#e7f1e8; }
+.empire-body { padding:18px 20px 24px; overflow-y:auto; min-height:0; }
+.empire-body h3 { font-size:20px; font-weight:800; color:#224c3d; line-height:1.3; margin:8px 0 10px; }
+.empire-body h4 { font-size:13px; font-weight:750; color:#27493d; margin-bottom:7px; }
+.empire-body p { font-size:12px; color:#718073; line-height:1.7; margin:5px 0 12px; }
+.empire-body small { display:block; font-size:10px; line-height:1.6; color:#899588; }
+.story-art { width:100%; height:180px; object-fit:cover; border-radius:13px; }
+.chapter-kicker { font-size:9px; color:#a78340; font-weight:800; letter-spacing:1px; margin-top:18px; }
+.mission-card, .guide-card, .summary-box { padding:15px; border-radius:13px; background:#edf4ed; border:1px solid #dce9da; margin:16px 0; font-size:12px; color:#3f654e; }
+.mission-card { background:#fff8e9; border-color:#efdfbe; color:#8f7035; }
+.mission-card .primary-button { margin-top:14px; width:100%; }
+.event-log { border-left:2px solid #cedec9; padding-left:14px; margin-top:12px; }
+.event-log p { font-size:11px; }
+.hire-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:18px; }
+.hire-grid button { text-align:left; padding:13px; background:white; border:1px solid #dae5d9; border-radius:12px; font-size:12px; font-weight:700; color:#176858; }
+.hire-grid .hire-asset { display:block; float:right; width:54px; height:54px; object-fit:contain; margin:-7px -7px 2px 6px; }
+.employee-row { display:flex; gap:10px; align-items:center; background:white; border:1px solid #e2e9df; padding:12px; border-radius:12px; margin:8px 0; font-size:12px; }
+.employee-row > div { flex:1; min-width:0; }
+.employee-avatar { display:grid; place-items:center; width:36px; height:40px; background:#e1eade; color:#42664a; font-size:17px; font-weight:800; border-radius:12px; }
+.employee-portrait { width:46px; height:48px; object-fit:contain; border-radius:11px; background:#f2f5ed; flex-shrink:0; }
+.asset-shelf { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:9px; }
+.asset-shelf > div { display:flex; flex-direction:column; align-items:center; overflow:hidden; border:1px solid #e4e9dd; border-radius:10px; background:#fff; }
+.asset-shelf img { width:100%; height:70px; object-fit:contain; }
+.asset-shelf span { font-size:9px; color:#738073; padding:4px; }
+.stock-illustration { display:flex; align-items:center; gap:10px; padding:6px 10px; margin-top:7px; background:#fff; border:1px solid #e5e9df; border-radius:10px; font-size:10px; color:#657466; }
+.stock-illustration img { width:60px; height:44px; object-fit:contain; }
+.role-technician { background:#e2edf0; color:#456b80; }.role-driver { background:#fff0cf; color:#9d7432; }
+.employee-row button { color:#176858; background:#edf4ed; padding:7px 9px; border-radius:9px; font-size:10px; font-weight:600; }
+.building-card { display:flex; gap:14px; padding:16px; background:white; border:1px solid #dde7db; border-radius:14px; margin:12px 0; }
+.building-card > div:last-child { flex:1; }
+.building-icon { background:#e7f0e2; color:#5e855c; width:52px; height:58px; display:grid; place-items:center; border-radius:14px; flex-shrink:0; }
+.building-icon.factory { background:#fff0d5; color:#ab8639; }
+.building-icon.sorter { background:#dcefe7; color:#176858; }
+.building-icon .building-asset { width:74px; height:68px; object-fit:contain; }
+.building-card .primary-button { margin-top:10px; font-size:11px; }
+.process-flow { display:flex; align-items:center; justify-content:space-between; gap:4px; background:#e9f1e7; padding:12px 8px; border-radius:12px; font-size:10px; color:#426747; }
+.process-flow b { color:#9aad92; }.machine-card { background:white; border:1px solid #dee8da; padding:16px; border-radius:14px; margin-top:14px; }
+.secondary-button { padding:9px 12px; background:#edf4ed; color:#176858; border-radius:9px; font-size:11px; font-weight:700; }
+.production-select { display:flex; align-items:center; gap:12px; font-size:11px; color:#788571; margin:12px 0; }
+.production-select select { flex:1; padding:10px; background:#f2f5ee; border-radius:8px; color:#375a40; }
+.machine-card > small { margin-top:10px; }
+.stock-meter { margin:18px 0; font-size:13px; color:#3f654e; }.stock-meter .cargo-progress { margin-top:10px; }
+.stock-table { width:100%; font-size:11px; background:white; border-radius:12px; overflow:hidden; border-collapse:collapse; }
+.stock-table th { font-size:9px; color:#8a9685; background:#f0f5ed; padding:12px 7px; font-weight:600; }.stock-table td { padding:14px 7px; border-bottom:1px solid #edf2e8; text-align:center; color:#466246; }.stock-table td:first-child { text-align:left; white-space:nowrap; }.stock-table i { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:6px; }
+.contract-card { background:white; border:1px solid #dee7d9; padding:16px; border-radius:14px; margin:14px 0; }.contract-summary { display:flex; justify-content:space-between; font-size:12px; color:#176858; margin:14px 0 5px; }.contract-summary span { font-size:10px; color:#9a8560; }
+.contract-card > button { width:100%; margin-top:12px; }.contract-status { font-size:9px; padding:4px 7px; background:#eff3e9; color:#738562; border-radius:6px; white-space:nowrap; height:fit-content; }.status-active { background:#fff3db; color:#a17d3f; }.status-completed { background:#dff1e5; color:#176858; }.status-failed { background:#f9e5e0; color:#ba6051; }.status-shipping { background:#e4edf6; color:#50779c; }
+.network-card { display:flex; gap:14px; padding:16px; border:1px solid #dce6d7; border-radius:14px; margin:12px 0; background:white; }.network-card > svg { flex-shrink:0; color:#69905c; }.network-card button { margin-top:12px; }
+@media(max-width:600px) { .game-footer { gap:5px; } .game-footer > button { padding:9px 8px; font-size:10px; } .mission-ribbon { top:151px; font-size:10px; } .empire-panel { top:196px; bottom:64px; width:calc(100vw - 32px); } .empire-body { padding:14px; } .empire-heading { padding:12px 14px; } .story-art { height:130px; } .kpi-strip strong { font-size:14px; } }
+
 /* Glassmorphism helpers */
 .glass-panel {
   background: rgba(255, 255, 255, 0.88);
@@ -36,4 +160,87 @@ html, body, #root {
 ::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.4);
   border-radius: 9999px;
+}
+
+/* Season Pill & Audio Toggle */
+.season-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1.5px solid #dc2626;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e293b;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  animation: pulse 3s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.sound-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sound-toggle-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+/* Goods Grid in Stock Tab */
+.goods-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.goods-grid .stock-illustration {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  gap: 6px;
+}
+
+.goods-grid .stock-illustration img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.goods-grid .stock-illustration span {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+}
+
+/* Hub Asset Art */
+.hub-asset-art {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1.5px solid #e2e8f0;
+  flex-shrink: 0;
 }

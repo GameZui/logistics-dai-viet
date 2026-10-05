@@ -1,6 +1,7 @@
 import React from 'react';
 import { useGameStore } from '../../store/useGameStore';
-import { Text } from '@react-three/drei';
+import { WorldLabel as Text } from './WorldLabel';
+import { PalletStackMesh } from './PalletStackMesh';
 
 export const WarehouseFacility = () => {
   const docks = useGameStore((state) => state.docks);
@@ -11,37 +12,84 @@ export const WarehouseFacility = () => {
   return (
     <group position={[0, 0, -6]}>
       {/* Main Facility Building Body */}
-      <mesh position={[0, 5, -8]} castShadow receiveShadow>
-        <boxGeometry args={[48, 10, 20]} />
-        <meshStandardMaterial color="#2563eb" roughness={0.35} metalness={0.1} />
+      <mesh position={[0, 8.7, -17]} castShadow receiveShadow>
+        <boxGeometry args={[48, 2.6, 2]} />
+        <meshStandardMaterial color="#cbd5df" roughness={0.75} metalness={0.1} />
       </mesh>
 
+      {/* Facade panel joints and a restrained blue brand band. */}
+      {Array.from({ length: 17 }, (_, index) => (
+        <mesh key={`panel-${index}`} position={[-24 + index * 3, 5, 2.02]}>
+          <boxGeometry args={[0.055, 1.2, 0.045]} />
+          <meshStandardMaterial color="#a6b5c3" roughness={0.8} />
+        </mesh>
+      ))}
+      <mesh position={[0, 8.5, 2.08]}>
+        <boxGeometry args={[48, 1.2, 0.15]} />
+        <meshStandardMaterial color="#176858" roughness={0.5} />
+      </mesh>
+      {[-14, 0, 14].map((x) => (
+        <group key={`vent-${x}`} position={[x, 11.1, -12]}>
+          <mesh castShadow>
+            <boxGeometry args={[3.4, 0.8, 2.8]} />
+            <meshStandardMaterial color="#94a3b8" roughness={0.65} />
+          </mesh>
+          <mesh position={[0, 0.43, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.85, 12]} />
+            <meshStandardMaterial color="#475569" />
+          </mesh>
+        </group>
+      ))}
+
       {/* Modern White Facade Accent Band */}
-      <mesh position={[0, 9.6, -7.9]} receiveShadow>
-        <boxGeometry args={[48.2, 0.9, 20.2]} />
+      <mesh position={[0, 9.6, -17]} receiveShadow>
+        <boxGeometry args={[48.2, 0.9, 2.2]} />
         <meshStandardMaterial color="#f8fafc" roughness={0.4} />
       </mesh>
 
       {/* Roof Canopy overhang */}
-      <mesh position={[0, 10.4, -4.5]} receiveShadow>
-        <boxGeometry args={[50, 0.6, 28]} />
+      <mesh position={[0, 10.4, -15]} receiveShadow>
+        <boxGeometry args={[50, 0.6, 7]} />
         <meshStandardMaterial color="#e2e8f0" roughness={0.5} />
       </mesh>
 
-      {/* Hub Brand Badge on Facade */}
-      <group position={[0, 7.8, 2.05]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[1.5, 1.5, 0.1, 32]} />
-          <meshStandardMaterial color="#ffffff" roughness={0.2} />
+      <mesh position={[0, 0.015, -8]} receiveShadow><boxGeometry args={[48, 0.03, 20]} /><meshStandardMaterial color="#e3e8e9" roughness={0.95} /></mesh>
+      {[-24, 24].map(x => <mesh key={`side-${x}`} position={[x, 3.5, -8]} castShadow><boxGeometry args={[0.25, 7, 20]} /><meshStandardMaterial color="#cbd5df" /></mesh>)}
+      <mesh position={[0, 3.5, -18]}><boxGeometry args={[48, 7, 0.25]} /><meshStandardMaterial color="#cbd5df" /></mesh>
+      {docks.map(dock => <group key={`staging-${dock.id}`} position={[-12 + (dock.number - 1) * 8 + 2.65, 0.04, -4]}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]}><planeGeometry args={[3.3, 3.3]} /><meshStandardMaterial color="#c2ddd8" /></mesh>
+        {Array.from({ length: Math.min(3, dock.storedPallets ?? 0) }, (_, i) => <PalletStackMesh key={i} position={[-0.94, i * 0.8, 1.48]} scale={0.7} />)}
+      </group>)}
+
+      {/* Hub Brand Signboard on Facade - Biển hiệu 3D chữ nổi Tổng Kho Đại Việt */}
+      <group position={[0, 8.4, 2.15]}>
+        {/* Khung biển hiệu màu đỏ thắm & viền vàng kim */}
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[18, 1.6, 0.12]} />
+          <meshStandardMaterial color="#991b1b" roughness={0.3} metalness={0.2} />
         </mesh>
+        <mesh position={[0, 0, 0.07]}>
+          <boxGeometry args={[17.6, 1.4, 0.04]} />
+          <meshStandardMaterial color="#b91c1c" roughness={0.4} />
+        </mesh>
+        {/* Tên Doanh Nghiệp Chữ Nổi Vàng Kim */}
         <Text
-          position={[0, 0, 0.08]}
-          fontSize={0.8}
-          color="#1e40af"
+          position={[0, 0.22, 0.11]}
+          fontSize={0.65}
+          color="#fef08a"
           anchorX="center"
           anchorY="middle"
         >
-          {currentHub}
+          TỔNG KHO VẬN TẢI & LOGISTICS ĐẠI VIỆT
+        </Text>
+        <Text
+          position={[0, -0.32, 0.11]}
+          fontSize={0.28}
+          color="#fef9c3"
+          anchorX="center"
+          anchorY="middle"
+        >
+          ★ KẾT NỐI BA MIỀN · VẠN DẶM BÌNH AN · CHỮ TÍN HÀNG ĐẦU ★
         </Text>
       </group>
 
@@ -104,8 +152,8 @@ export const WarehouseFacility = () => {
             }}
           >
             {/* Dock Opening Frame */}
-            <mesh position={[0, 3, 0]} castShadow>
-              <boxGeometry args={[5.4, 6.2, 0.8]} />
+            <mesh position={[0, 6, 0]} castShadow>
+              <boxGeometry args={[5.4, 0.4, 0.8]} />
               <meshStandardMaterial
                 color={isSelected ? '#60a5fa' : isLocked ? '#94a3b8' : '#334155'}
                 roughness={0.5}
@@ -113,10 +161,7 @@ export const WarehouseFacility = () => {
             </mesh>
 
             {/* Inner Recess / Tunnel */}
-            <mesh position={[0, 2.9, -0.2]}>
-              <boxGeometry args={[4.6, 5.6, 0.5]} />
-              <meshStandardMaterial color="#0f172a" />
-            </mesh>
+            {[-2.5, 2.5].map(x => <mesh key={x} position={[x, 3, 0]} castShadow><boxGeometry args={[0.4, 6, 0.8]} /><meshStandardMaterial color="#334155" /></mesh>)}
 
             {/* Motorized Roll-up Door (Slides up when active) */}
             <mesh position={[0, isUnloading ? 5.1 : 2.8, 0.15]}>
@@ -164,7 +209,7 @@ export const WarehouseFacility = () => {
                 anchorX="center"
                 anchorY="middle"
               >
-                {`BAY 0${dock.number}`}
+                {`CỬA 0${dock.number}`}
               </Text>
             </group>
 

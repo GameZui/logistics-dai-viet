@@ -9,6 +9,7 @@ export interface DockBay {
   currentTruckId?: string;
   hasLeveller: boolean;
   level: number;
+  storedPallets?: number;
 }
 
 export interface PalletItem {
@@ -17,6 +18,8 @@ export interface PalletItem {
   color: string;
   value: number;
 }
+
+import { Goods } from './empire';
 
 export interface Truck {
   id: string;
@@ -32,6 +35,11 @@ export interface Truck {
   valueReward: number;
   progress: number;
   isVip?: boolean;
+  motionTime?: number;
+  queueSlot?: number;
+  direction?: 'inbound' | 'outbound';
+  goods?: Goods;
+  truckType?: 'tarpaulin' | 'container' | 'reefer';
 }
 
 export interface Forklift {
@@ -44,6 +52,8 @@ export interface Forklift {
   carryingPallet: boolean;
   x: number;
   z: number;
+  taskTime?: number;
+  targetTruckId?: string;
 }
 
 export interface HubLocation {

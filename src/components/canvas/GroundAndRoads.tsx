@@ -1,18 +1,18 @@
 import React from 'react';
 
-export const GroundAndRoads = () => {
+export const GroundAndRoads = React.memo(() => {
   return (
     <group>
       {/* Main Ground Tarmac */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
         <planeGeometry args={[120, 120]} />
-        <meshStandardMaterial color="#e5edf5" roughness={0.85} />
+        <meshStandardMaterial color="#e5ebdf" roughness={0.85} />
       </mesh>
 
       {/* Main Driveway / Roadway in front of docks */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 14]} receiveShadow>
-        <planeGeometry args={[90, 14]} />
-        <meshStandardMaterial color="#d4e2ee" roughness={0.7} />
+        <planeGeometry args={[110, 20]} />
+        <meshStandardMaterial color="#94a3ae" roughness={0.95} />
       </mesh>
 
       {/* White dashed road center line */}
@@ -105,4 +105,4 @@ export const GroundAndRoads = () => {
       </group>
     </group>
   );
-};
+});
