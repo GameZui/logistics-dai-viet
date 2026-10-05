@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { IsometricCamera } from './IsometricCamera';
 import { GroundAndRoads } from './GroundAndRoads';
 import { WarehouseFacility } from './WarehouseFacility';
+import { FleetLayer } from './FleetLayer';
 import { useGameStore } from '../../store/useGameStore';
 
 interface GameCanvasProps {
@@ -43,8 +44,10 @@ export const GameCanvas = ({ children }: GameCanvasProps) => {
         <IsometricCamera />
         <GroundAndRoads />
         <WarehouseFacility />
+        <FleetLayer />
         {children}
       </Canvas>
     </div>
   );
 };
+
