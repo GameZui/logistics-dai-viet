@@ -314,18 +314,20 @@ export const useGameStore = create<GameState>((set, get) => ({
         lastSpawnTime = now;
       }
 
-      // 2. Gán xe en_route vào dock trống
-      for (let truck of nextTrucks) {
-        if (truck.status === 'en_route' && !truck.dockId &&
-          !nextTrucks.some((item) => item.status === 'docking' || item.status === 'completed')) {
-          const freeDock = nextDocks.find((d) => d.status === 'available');
-          if (freeDock) {
-            truck.dockId = freeDock.id;
-            truck.status = 'docking';
-            truck.motionTime = 0;
-            freeDock.status = 'loading';
-            freeDock.currentTruckId = truck.id;
-          }
+      // 2. Chỉ một xe được vào làn dốc bến tại một thời điểm; các xe còn lại xếp hàng chờ.
+      const laneBusy = nextTrucks.some((item) => item.status === 'docking' || item.status === 'completed');
+      if (!laneBusy) {
+        const waiting = nextTrucks
+          .filter((item) => item.status === 'en_route' && !item.dockId)
+          .sort((a, b) => (a.queueSlot ?? 0) - (b.queueSlot ?? 0));
+        const truck = waiting[0];
+        const freeDock = nextDocks.find((d) => d.status === 'available');
+        if (truck && freeDock) {
+          truck.dockId = freeDock.id;
+          truck.status = 'docking';
+          truck.motionTime = 0;
+          freeDock.status = 'loading';
+          freeDock.currentTruckId = truck.id;
         }
       }
 
@@ -377,6 +379,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       nextTrucks = nextTrucks
         .map((truck) => {
           if (truck.status === 'completed') {
+            // Wait for the truck entering the lane to clear it before pulling out.
             if (nextTrucks.some(item => item.status === 'docking')) return truck;
             truck.motionTime = (truck.motionTime ?? 0) + effectiveDelta;
             if (truck.motionTime >= DEPARTURE_SECONDS) {

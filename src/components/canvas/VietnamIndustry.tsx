@@ -6,6 +6,11 @@ import * as THREE from 'three';
 import { useEmpireStore, GOODS } from '../../store/useEmpireStore';
 import { useGameStore } from '../../store/useGameStore';
 import { Employee } from '../../types/empire';
+import { separateWorker } from '../../utils/crowd';
+
+// Shared registry of where every crew member currently stands, so workers keep
+// a gap from one another instead of walking straight through each other.
+const workerPositions = new Map<string, { id: string; x: number; z: number }>();
 
 const Person = React.memo(({ employee, index }: { employee: Employee; index: number }) => {
   const group = useRef<THREE.Group>(null);
@@ -36,7 +41,7 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
       // 4.8s -> 8.2s: Ôm kiện hàng đi về bàn phân loại / băng chuyền
       // 8.2s -> 11s: Đặt hàng lên bàn kiểm tra, quét mã vạch và phân loại
       const cycle = (t * 0.85 + index * 3.4) % 11;
-      const laneX = -4 + (index % 3) * 4;
+      const laneX = -4.5 + (index % 4) * 3;
 
       if (cycle < 3.5) {
         // Đi xuống bãi tập kết hàng thô (Z = -5.5)
@@ -108,7 +113,11 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
       isInspecting = !isWalking;
     }
 
-    group.current.position.set(posX, 0, posZ);
+    // Keep a gap from the other crew members so nobody walks through anybody.
+    const settled = separateWorker(posX, posZ, workerPositions.values());
+    workerPositions.set(employee.id, { id: employee.id, x: settled.x, z: settled.z });
+
+    group.current.position.set(settled.x, 0, settled.z);
     group.current.rotation.y = rotY;
 
     if (boxInHand.current) {
@@ -470,9 +479,15 @@ const LocalScenery = React.memo(() => <group>
 
   {/* Dãy Xe Máy Nhân Viên Đi Làm */}
   {[-34, -31.5, -29].map((x, i) => <group key={x} position={[x, 0, 6.5]} rotation={[0, 0.35, 0]}>
-    <mesh position={[0, 0.72, 0]}><boxGeometry args={[0.35, 0.58, 1.6]} /><meshStandardMaterial color={['#1e3a8a', '#dc2626', '#15803d'][i]} /></mesh>
-    <mesh position={[0, 1.1, -0.2]}><boxGeometry args={[0.42, 0.12, 0.8]} /><meshStandardMaterial color="#0f172a" /></mesh>
-    {[-0.65, 0.65].map(z => <mesh key={z} position={[0, 0.35, z]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.35, 0.35, 0.12, 12]} /><meshStandardMaterial color="#1e293b" /></mesh>)}
+    {/* Thân xe & yên ngồi */}
+    <mesh position={[0, 0.74, 0.05]} castShadow><boxGeometry args={[0.5, 0.5, 1.7]} /><meshStandardMaterial color={['#1e3a8a', '#dc2626', '#15803d'][i]} /></mesh>
+    <mesh position={[0, 1.02, -0.35]} castShadow><boxGeometry args={[0.46, 0.16, 0.8]} /><meshStandardMaterial color="#0f172a" /></mesh>
+    {/* Đầu xe, ghi-đông và đèn pha */}
+    <mesh position={[0, 1.02, 0.82]} castShadow><boxGeometry args={[0.44, 0.5, 0.24]} /><meshStandardMaterial color={['#1e3a8a', '#dc2626', '#15803d'][i]} /></mesh>
+    <mesh position={[0, 1.3, 0.78]} rotation={[0, 0, Math.PI / 2]}><cylinderGeometry args={[0.03, 0.03, 0.62, 8]} /><meshStandardMaterial color="#0f172a" metalness={0.6} /></mesh>
+    <mesh position={[0, 1.02, 0.96]}><sphereGeometry args={[0.1, 10, 8]} /><meshStandardMaterial color="#fef08a" emissive="#facc15" emissiveIntensity={0.5} /></mesh>
+    {/* Bánh trước & bánh sau */}
+    {[-0.72, 0.72].map(z => <mesh key={z} position={[0, 0.34, z]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[0.34, 0.34, 0.14, 14]} /><meshStandardMaterial color="#1e293b" /></mesh>)}
   </group>)}
 
   {/* Hàng Cây Chuối Cảnh & Cây Bàng Nhiệt Đới */}

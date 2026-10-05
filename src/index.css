@@ -134,6 +134,18 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .network-card { display:flex; gap:14px; padding:16px; border:1px solid #dce6d7; border-radius:14px; margin:12px 0; background:white; }.network-card > svg { flex-shrink:0; color:#69905c; }.network-card button { margin-top:12px; }
 @media(max-width:600px) { .game-footer { gap:5px; } .game-footer > button { padding:9px 8px; font-size:10px; } .mission-ribbon { top:151px; font-size:10px; } .empire-panel { top:196px; bottom:64px; width:calc(100vw - 32px); } .empire-body { padding:14px; } .empire-heading { padding:12px 14px; } .story-art { height:130px; } .kpi-strip strong { font-size:14px; } }
 
+/* Camera view switcher (follow the crews around the lot) */
+.camera-widget { position:absolute; left:16px; bottom:78px; z-index:30; display:flex; flex-direction:column; gap:8px; width:176px; padding:12px; border-radius:16px; background:#ffffffed; border:1px solid #dde5ed; box-shadow:0 10px 30px #16344a14; }
+.camera-widget-title { font-size:9px; letter-spacing:1.4px; font-weight:700; color:#8394a0; }
+.camera-view-list { display:flex; flex-direction:column; gap:4px; }
+.camera-view-list button { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; font-size:11px; font-weight:600; color:#3f5468; background:#f2f6f9; text-align:left; transition:background .15s, color .15s; }
+.camera-view-list button:hover { background:#e7eff4; }
+.camera-view-list button.active { background:#176858; color:#fff; }
+.camera-widget-zoom { display:flex; gap:4px; }
+.camera-widget-zoom button { flex:1; display:grid; place-items:center; height:30px; border-radius:9px; background:#eef3f6; color:#48606f; transition:background .15s; }
+.camera-widget-zoom button:hover { background:#e2ebf0; }
+@media (max-width:600px) { .camera-widget { width:150px; bottom:64px; padding:10px; } }
+
 /* Glassmorphism helpers */
 .glass-panel {
   background: rgba(255, 255, 255, 0.88);

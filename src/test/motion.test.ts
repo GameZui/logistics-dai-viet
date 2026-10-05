@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { truckPose, forkliftPose, ARRIVAL_SECONDS, DOCK_SECONDS, DEPARTURE_SECONDS } from '../utils/motion';
+import { truckPose, forkliftPose, waitSlotX, ARRIVAL_SECONDS, DOCK_SECONDS, DEPARTURE_SECONDS } from '../utils/motion';
 
 describe('vehicle routes', () => {
   it('keeps position and heading continuous through entry, backing, and departure', () => {
@@ -25,5 +25,16 @@ describe('vehicle routes', () => {
     expect(forkliftPose(5, -12).lift).toBe(.45);
     expect(forkliftPose(8, -12).carrying).toBe(false);
     expect(forkliftPose(8, -12).lift).toBe(-0.45);
+  });
+  it('keeps queued trucks on the lot and pulls into the bay from the waiting slot', () => {
+    for (const slot of [0, 1, 2, 5, 7]) {
+      const waiting = truckPose('en_route', 0, -12, slot);
+      expect(waiting.x).toBe(waitSlotX(slot));
+      expect(Math.abs(waiting.x)).toBeLessThan(60);
+      // en_route -> docking must be seamless so the truck never snaps or drifts off the lot.
+      const start = truckPose('docking', 0, -12, slot);
+      expect(Math.hypot(start.x - waiting.x, start.z - waiting.z)).toBeLessThan(0.001);
+      expect(Math.abs(start.angle - waiting.angle)).toBeLessThan(0.001);
+    }
   });
 });

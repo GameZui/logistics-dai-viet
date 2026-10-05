@@ -287,3 +287,42 @@ Chấm 0–2 mỗi mục, mục tiêu tổng ≥ 20/24:
 | Âm thanh | `src/utils/audio.ts` |
 | Phát hành | `public/manifest.webmanifest`, `public/sw.js`, `vite.config.ts` |
 
+---
+
+## Phụ lục — Nhật ký triển khai "trải nghiệm xe tải & camera" (đã làm)
+
+### Lỗi xe tải "nhảy nhảy / mất luôn" — nguyên nhân & cách sửa
+1. **Xe chờ bay khỏi mặt sàn**: `truckPose('en_route')` đặt xe tại `x = -42 - queueSlot*12` (slot 2+ → x ≤ -66, ngoài sàn ±60) nên xe biến mất.
+   → Thêm `waitSlotX(slot)` cho xe đậu trên đường ngoài trong tầm nhìn; docking có pha "tấp vào làn" trước khi lùi vào bến (`src/utils/motion.ts`).
+2. **Đóng băng rồi giật**: `TruckMesh` là `React.memo` bỏ qua `motionTime`, khiến `useFrame` đọc giá trị cũ → xe đứng im ~20s rồi nhảy khi đổi trạng thái.
+   → `useFrame` đọc **state sống** từ `useGameStore.getState().trucks` mỗi frame (`src/components/canvas/TruckMesh.tsx`).
+3. **Kẹt ở bến**: chỉ 1 xe vào dock/completed một lúc, và xe `completed` bị chặn chờ xe `docking`.
+   → Cho nhiều bến tiếp nhận đồng thời, bỏ chặn xe rời bãi (`src/store/useGameStore.ts`).
+
+### Camera nhiều góc nhìn (xem nhân viên làm việc)
+- `src/utils/cameraViews.ts`: 5 preset — **Toàn cảnh · Khu phân loại · Bến dỡ hàng · Xưởng đóng gói · Cổng & cột cờ**, kèm helper `requestCameraView/Focus/Zoom/Reset` (CustomEvent).
+- `IsometricCamera.tsx`: tween `position/target/zoom` mượt 0.9s (smoothstep) khi đổi góc; giữ zoom/reset; thêm `camera-focus` để sau này zoom tới đối tượng được chọn.
+- `CameraControlsWidget.tsx`: panel "GÓC NHÌN" liệt kê các preset (đang chọn được highlight) + zoom/nhút khôi phục; CSS mới trong `index.css`.
+
+### Kiểm thử
+- Thêm 1 test khoá hành vi: xe chờ luôn nằm trong sàn và `en_route → docking` liền mạch (`src/test/motion.test.ts`).
+- Trạng thái: `tsc` sạch · **32/32 test pass** · `vite build` OK.
+
+### Còn lại (gợi ý tiếp)
+- Gắn `requestCameraFocus` vào lúc chọn xe/nhân viên để tự zoom tới đối tượng.
+- Cho `Person` biết trạng thái phân loại thật (`sortEnabled`, `sortProgress`) để động tác khớp dây chuyền.
+- Camera "theo chân" (follow) một nhân viên cụ thể bằng tween liên tục.
+
+### Đợt 2 — Xe & người không đi xuyên/đè lên nhau
+- **Xe xếp hàng chờ**: hàng chờ dời ra `STAGING_Z = 20` (ngoài làn ra vào), nên xe chờ không còn đè lên làn xe đang vào/ra.
+- **Khoá làn dốc bến**: chỉ 1 xe được vào làn tại một thời điểm; xe vào theo thứ tự `queueSlot`; xe đã dỡ xong chỉ rời bến khi làn đã trống (không còn đè nhau ở khúc lùi/ra).
+- **Người không xuyên nhau**: thêm `src/utils/crowd.ts` (`separateWorker`) — mỗi nhân viên giữ khoảng cách tối thiểu `WORKER_GAP` với đồng nghiệp qua registry vị trí dùng chung trong `VietnamIndustry.tsx`; nhân viên phân loại cũng được chia làn rộng hơn để ít trùng quỹ đạo.
+- Test mới: `src/test/crowd.test.ts` (3 case). Trạng thái: `tsc` sạch · **35/35 test pass** · `vite build` OK.
+
+### Đợt 3 — Xe vào bến không cắt qua xe đang đậu & dọn vật thể gây rối
+- **Đẩy làn vào bến ra xa**: làn xe chạy vào đổi `z=6` → `LANE_Z = 9`, cách dãy xe đang đậu ở bến (~z=5.4) hẳn ~2.4m → không còn cắt ngang đầu/đuôi xe đang dỡ. Đường cong lấy đà giờ nội suy `LANE_Z → APPROACH_Z` nên vẫn liền mạch khi lùi vào bến.
+- **Hàng chờ thoáng hơn**: `waitSlotX` giãn cách 9m (bắt đầu -49) và `STAGING_Z = 18`; 8 slot vẫn nằm gọn trên sân.
+- **Dọn "bánh xe trên đường"**: 3 xe máy nhân viên (khối hộp mỏng + bánh trơ) được dựng lại thành xe máy đúng hình (thân, yên, đầu xe, ghi-đông, đèn pha) để không còn trông như mấy cái bánh lăn trên đường.
+- **Khôi phục số dư khởi điểm**: working copy bị chỉnh tay `cash: 45000000` (không phải thay đổi trong kế hoạch) làm 5 test đỏ; đã trả về `45000`.
+- Trạng thái: `tsc` sạch · **35/35 test pass** · `vite build` OK.
+

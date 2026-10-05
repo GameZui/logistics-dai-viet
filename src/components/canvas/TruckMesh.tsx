@@ -16,47 +16,46 @@ interface TruckMeshProps {
   truck: Truck;
 }
 
+const dockXOf = (dockId?: string) => (dockId ? -12 + ((Number(dockId.replace(/\D/g, '')) || 1) - 1) * 8 : 0);
+
 export const TruckMesh = React.memo(({ truck }: TruckMeshProps) => {
   const groupRef = useRef<THREE.Group>(null);
-  const initialPosition = useRef<[number, number, number]>([
-    truck.dockId ? -12 + ((Number(truck.dockId.split('-')[1]) || 1) - 1) * 8 : 25,
-    0, truck.status === 'unloading' ? 0.6 : 14,
-  ]);
+  const startPose = truckPose(truck.status, 0, dockXOf(truck.dockId), truck.queueSlot);
+  const initialPosition = useRef<[number, number, number]>([startPose.x, 0, startPose.z]);
   const selectEntity = useGameStore((state) => state.selectEntity);
   const selectedEntityId = useGameStore((state) => state.selectedEntityId);
 
   const isSelected = selectedEntityId === truck.id;
-
-  // Determine target position & rotation based on status & assigned dock
-  const dockNum = truck.dockId ? Number(truck.dockId.replace(/\D/g, '')) || 1 : 1;
-  const dockX = truck.dockId ? -12 + (dockNum - 1) * 8 : 0;
   const motionTime = useRef(truck.motionTime ?? 0);
   const motionStatus = useRef(truck.status);
   const wheelsRef = useRef<THREE.Group>(null);
   const doorsRef = useRef<THREE.Group>(null);
 
-  // Animation interpolation & Audio trigger
+  // Read the freshest simulation state every frame so the truck never freezes
+  // between React renders or snaps when its status changes.
   useFrame((_, delta) => {
-    if (!groupRef.current) return;
+    const current = groupRef.current;
+    if (!current) return;
     const speed = useGameStore.getState().gameSpeed;
     if (speed === 0) return;
-    const current = groupRef.current;
-    if (motionStatus.current !== truck.status) {
-      if (truck.status === 'docking' || truck.status === 'completed') {
-        playTruckHorn();
-      }
-      motionStatus.current = truck.status;
-      motionTime.current = truck.motionTime ?? 0;
+    const live = useGameStore.getState().trucks.find((item) => item.id === truck.id);
+    if (!live) return;
+
+    if (motionStatus.current !== live.status) {
+      if (live.status === 'docking' || live.status === 'completed') playTruckHorn();
+      motionStatus.current = live.status;
+      motionTime.current = live.motionTime ?? 0;
     }
-    motionTime.current = Math.min(Math.max(motionTime.current, truck.motionTime ?? 0) + delta * speed,
-      (truck.motionTime ?? 0) + 0.15 * speed);
-    const pose = truckPose(truck.status, motionTime.current, dockX, truck.queueSlot);
+    const storeTime = live.motionTime ?? 0;
+    motionTime.current = Math.min(Math.max(motionTime.current, storeTime) + delta * speed, storeTime + 0.2 * speed);
+
+    const pose = truckPose(live.status, motionTime.current, dockXOf(live.dockId), live.queueSlot);
     const distance = Math.hypot(pose.x - current.position.x, pose.z - current.position.z);
     current.position.set(pose.x, 0, pose.z);
     current.rotation.y = pose.angle;
     wheelsRef.current?.children.forEach((wheel) => { wheel.rotation.x += distance / 0.48; });
     doorsRef.current?.children.forEach((door, index) => {
-      const target = truck.status === 'unloading' ? (index === 0 ? -1 : 1) * Math.PI / 2 : 0;
+      const target = live.status === 'unloading' ? (index === 0 ? -1 : 1) * Math.PI / 2 : 0;
       door.rotation.y = THREE.MathUtils.damp(door.rotation.y, target, 5, delta * speed);
     });
   });
