@@ -1,6 +1,5 @@
 import React from 'react';
 import { Html } from '@react-three/drei';
-import { Truck, Box, CheckCircle2, Clock } from 'lucide-react';
 
 interface FloatingPinMarkerProps {
   label: string;
@@ -12,7 +11,7 @@ interface FloatingPinMarkerProps {
   selected?: boolean;
 }
 
-export const FloatingPinMarker = ({
+export const FloatingPinMarker = React.memo(({
   label,
   subLabel,
   variant = 'blue',
@@ -74,4 +73,4 @@ export const FloatingPinMarker = ({
       </div>
     </Html>
   );
-};
+});

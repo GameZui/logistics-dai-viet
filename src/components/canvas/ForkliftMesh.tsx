@@ -15,20 +15,17 @@ interface ForkliftMeshProps {
   index: number;
 }
 
-export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
+export const ForkliftMesh = React.memo(({ forklift, index }: ForkliftMeshProps) => {
   const groupRef = useRef<THREE.Group>(null);
   const selectEntity = useGameStore((state) => state.selectEntity);
   const selectedEntityId = useGameStore((state) => state.selectedEntityId);
-  const trucks = useGameStore((state) => state.trucks);
-  const docks = useGameStore((state) => state.docks);
-  const employees = useEmpireStore(state => state.employees);
-  const driver = employees.filter(employee => employee.role === 'driver')[index];
+  const driverLevel = useEmpireStore(state => state.employees.filter(e => e.role === 'driver')[index]?.level ?? 1);
+  const driverEnergy = useEmpireStore(state => state.employees.filter(e => e.role === 'driver')[index]?.energy ?? 100);
+  const hasDriver = useEmpireStore(state => state.employees.filter(e => e.role === 'driver').length > index);
+  const targetGoods = useGameStore(state => state.trucks.find(t => t.id === forklift.targetTruckId)?.goods ?? 'rice');
 
   const isSelected = selectedEntityId === forklift.id;
 
-  const activeTruck = trucks.find((t) => t.id === forklift.targetTruckId && t.status === 'unloading');
-  const targetDock = activeTruck ? docks.find((d) => d.id === activeTruck.dockId) : null;
-  const targetDockX = targetDock ? -12 + (targetDock.number - 1) * 8 : -2 + index * 4;
   const animationTime = useRef(forklift.taskTime ?? 0);
   const taskRef = useRef(forklift.targetTruckId);
   const statusRef = useRef(forklift.status);
@@ -40,8 +37,9 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
   // Render the assigned task between simulation ticks without updating React per frame.
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    const speed = useGameStore.getState().gameSpeed;
-    if (speed === 0 || !driver) return;
+    const game = useGameStore.getState();
+    const speed = game.gameSpeed;
+    if (speed === 0 || !hasDriver) return;
     const current = groupRef.current;
     delta = Math.min(delta, 0.05) * speed;
 
@@ -58,6 +56,10 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
       beaconRef.current.rotation.y += delta * 8;
     }
 
+    const activeTruck = game.trucks.find((t) => t.id === forklift.targetTruckId && t.status === 'unloading');
+    const targetDock = activeTruck ? game.docks.find((d) => d.id === activeTruck.dockId) : null;
+    const targetDockX = targetDock ? -12 + (targetDock.number - 1) * 8 : -2 + index * 4;
+
     let targetX = current.position.x;
     let targetZ = current.position.z;
     let lift = 0;
@@ -67,7 +69,7 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
         animationTime.current = forklift.taskTime ?? 0;
         taskRef.current = forklift.targetTruckId;
       }
-      const rate = (targetDock?.hasLeveller ? 1.25 : 1) * (1 + Math.max(0, (targetDock?.level ?? 1) - 1) * .15) * (activeTruck.isVip ? 1.2 : 1) * (forklift.speed / 4.5) * (1 + (driver.level - 1) * .15) * (.5 + driver.energy / 200);
+      const rate = (targetDock?.hasLeveller ? 1.25 : 1) * (1 + Math.max(0, (targetDock?.level ?? 1) - 1) * .15) * (activeTruck.isVip ? 1.2 : 1) * (forklift.speed / 4.5) * (1 + (driverLevel - 1) * .15) * (.5 + driverEnergy / 200);
       animationTime.current = Math.min(Math.max(animationTime.current, forklift.taskTime ?? 0) + delta * rate,
         (forklift.taskTime ?? 0) + 0.15 * speed * rate);
       const pose = forkliftPose(animationTime.current, targetDockX);
@@ -98,7 +100,7 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
       {/* Floating Marker */}
       <FloatingPinMarker
         label={forklift.name}
-        subLabel={activeTruck ? forklift.status === 'carrying' ? 'Chở hàng' : forklift.status === 'picking' ? 'Lấy hàng' : forklift.status === 'depositing' ? 'Đặt hàng' : 'Đến lấy hàng' : 'Sẵn sàng'}
+        subLabel={forklift.targetTruckId ? (forklift.status === 'carrying' ? 'Chở hàng' : forklift.status === 'picking' ? 'Lấy hàng' : forklift.status === 'depositing' ? 'Đặt hàng' : 'Đến lấy hàng') : 'Sẵn sàng'}
         variant="amber"
         position={[0, 3.2, 0]}
         selected={isSelected}
@@ -182,7 +184,7 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
       </mesh>
 
       {/* Nhân viên lái xe nâng (Đồng phục xanh lá bảo hộ lao động) */}
-      {driver && (
+      {hasDriver && (
         <group position={[0, 1.48, -0.15]}>
           {/* Thân áo */}
           <mesh castShadow>
@@ -246,8 +248,8 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
             <PalletStackMesh
               position={[0, -0.4, 0.65]}
               scale={0.7}
-              color={GOODS[activeTruck?.goods ?? 'rice']?.color ?? '#d9b879'}
-              type={activeTruck?.goods === 'rice' || activeTruck?.goods === 'coffee' ? 'sack' : 'box'}
+              color={GOODS[targetGoods]?.color ?? '#d9b879'}
+              type={targetGoods === 'rice' || targetGoods === 'coffee' ? 'sack' : 'box'}
             />
           </group>
         </group>
@@ -269,4 +271,11 @@ export const ForkliftMesh = ({ forklift, index }: ForkliftMeshProps) => {
       )}
     </group>
   );
-};
+}, (prev, next) => (
+  prev.forklift.id === next.forklift.id &&
+  prev.forklift.status === next.forklift.status &&
+  prev.forklift.carryingPallet === next.forklift.carryingPallet &&
+  prev.forklift.targetTruckId === next.forklift.targetTruckId &&
+  prev.forklift.speed === next.forklift.speed &&
+  prev.index === next.index
+));

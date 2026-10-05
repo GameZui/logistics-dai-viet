@@ -8,7 +8,7 @@ interface PalletStackMeshProps {
   scale?: number;
 }
 
-export const PalletStackMesh = ({
+export const PalletStackMesh = React.memo(({
   position = [0, 0, 0],
   color = '#d97706',
   type = 'box',
@@ -130,4 +130,4 @@ export const PalletStackMesh = ({
       )}
     </group>
   );
-};
+});

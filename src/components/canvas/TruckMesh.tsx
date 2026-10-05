@@ -16,7 +16,7 @@ interface TruckMeshProps {
   truck: Truck;
 }
 
-export const TruckMesh = ({ truck }: TruckMeshProps) => {
+export const TruckMesh = React.memo(({ truck }: TruckMeshProps) => {
   const groupRef = useRef<THREE.Group>(null);
   const initialPosition = useRef<[number, number, number]>([
     truck.dockId ? -12 + ((Number(truck.dockId.split('-')[1]) || 1) - 1) * 8 : 25,
@@ -24,14 +24,12 @@ export const TruckMesh = ({ truck }: TruckMeshProps) => {
   ]);
   const selectEntity = useGameStore((state) => state.selectEntity);
   const selectedEntityId = useGameStore((state) => state.selectedEntityId);
-  const docks = useGameStore((state) => state.docks);
-  const palletOnForks = useGameStore(state => state.forklifts.some(forklift => forklift.targetTruckId === truck.id && forklift.carryingPallet));
 
   const isSelected = selectedEntityId === truck.id;
 
   // Determine target position & rotation based on status & assigned dock
-  const dock = docks.find((d) => d.id === truck.dockId);
-  const dockX = dock ? -12 + (dock.number - 1) * 8 : 0;
+  const dockNum = truck.dockId ? Number(truck.dockId.replace(/\D/g, '')) || 1 : 1;
+  const dockX = truck.dockId ? -12 + (dockNum - 1) * 8 : 0;
   const motionTime = useRef(truck.motionTime ?? 0);
   const motionStatus = useRef(truck.status);
   const wheelsRef = useRef<THREE.Group>(null);
@@ -331,7 +329,7 @@ export const TruckMesh = ({ truck }: TruckMeshProps) => {
 
         {/* Pallets hàng hóa thực tế bên trong thùng xe khi đang bốc dỡ */}
         {isUnloading &&
-          Array.from({ length: Math.max(0, truck.palletsTotal - truck.palletsUnloaded - (palletOnForks ? 1 : 0)) }).map(
+          Array.from({ length: Math.max(0, truck.palletsTotal - truck.palletsUnloaded) }).map(
             (_, pi) => {
               const row = Math.floor(pi / 2);
               const col = pi % 2;
@@ -373,4 +371,12 @@ export const TruckMesh = ({ truck }: TruckMeshProps) => {
       </group>
     </group>
   );
-};
+}, (prev, next) => (
+  prev.truck.id === next.truck.id &&
+  prev.truck.status === next.truck.status &&
+  prev.truck.palletsUnloaded === next.truck.palletsUnloaded &&
+  prev.truck.palletsTotal === next.truck.palletsTotal &&
+  prev.truck.dockId === next.truck.dockId &&
+  prev.truck.goods === next.truck.goods &&
+  prev.truck.isVip === next.truck.isVip
+));
