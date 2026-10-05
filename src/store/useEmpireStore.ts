@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { useGameStore } from './useGameStore';
+import { useFleetStore } from './useFleetStore';
 import { CargoStock, Contract, Employee, Goods, Role } from '../types/empire';
+import { Carrier } from '../types/game';
+import { MIN_CONDITION } from '../types/fleet';
 import { playCoin, playFanfare } from '../utils/audio';
 
 export const GOODS: Record<Goods, { label: string; product: string; color: string }> = {
@@ -13,7 +16,7 @@ export const GOODS: Record<Goods, { label: string; product: string; color: strin
 };
 export const ROLES: Record<Role, { label: string; salary: number; hire: number }> = {
   warehouse: { label: 'Thủ kho', salary: 180, hire: 1800 },
-  driver: { label: 'Lái xe nâng', salary: 220, hire: 2200 },
+  driver: { label: 'Tài xế', salary: 220, hire: 2200 },
   sorter: { label: 'Nhân viên phân loại', salary: 190, hire: 1900 },
   technician: { label: 'Kỹ thuật viên', salary: 260, hire: 2600 },
 };
@@ -96,6 +99,7 @@ const initial = () => ({
   sortProgress: 0, productionProgress: 0, elapsed: 0, wageClock: 0,
   received: 0, sorted: 0, produced: 0, delivered: 0, contractsCompleted: 0,
   chapter: 0, unlockedHubs: ['WH-01'], log: ['Chú Hùng: Kho đã sẵn sàng. Bắt đầu bằng một chuyến hàng nhé!'],
+  serviceRevenue: 0, deliveryRevenue: 0,
   notice: '',
 });
 interface EmpireState {
@@ -105,6 +109,7 @@ interface EmpireState {
   sortProgress: number; productionProgress: number; elapsed: number; wageClock: number;
   received: number; sorted: number; produced: number; delivered: number; contractsCompleted: number;
   chapter: number; offerSerial: number; endlessEventIndex: number; eventClock: number; unlockedHubs: string[]; log: string[]; notice: string;
+  serviceRevenue: number; deliveryRevenue: number;
   resetEmpire: () => void; receiveCargo: (goods: Goods, quantity: number) => void;
   hire: (role: Role) => boolean; train: (id: string) => boolean;
   build: (kind: 'sorter' | 'factory' | 'warehouse') => boolean;
@@ -179,8 +184,14 @@ export const useEmpireStore = create<EmpireState>((set, get) => ({
     const state = get(); const game = useGameStore.getState(); const contract = state.contracts.find(c => c.id === id);
     const dock = game.docks.find(d => d.status === 'available');
     if (!contract || contract.status !== 'active' || (state.inventory[contract.goods]?.[contract.grade] ?? 0) < contract.quantity || !dock || game.trucks.length >= 8) { set({ notice: 'Cần đủ hàng đúng loại, một cửa kho trống và chỗ cho xe xuất hàng.' }); return false; }
+    // Ưu tiên điều xe của công ty (có tài xế, xe còn tốt); nếu không có thì thuê xe đối tác.
+    const fleet = useFleetStore.getState();
+    const ownTruck = fleet.trucks.find(item => item.status === 'available' && item.driverId && item.condition > MIN_CONDITION);
+    const usingOwn = ownTruck ? fleet.dispatchTruck(ownTruck.id, contract.duration) : false;
+    const partners: Carrier[] = ['Nordline', 'Cargoviva', 'Bluepeak'];
+    const carrier: Carrier = usingOwn ? 'WareTrack' : partners[Math.floor(Math.random() * partners.length)];
     const truckId = `xuat-${contract.id}-${Math.round(state.elapsed * 1000)}`;
-    game.spawnTruck({ id: truckId, dockId: dock.id, status: 'completed', direction: 'outbound', goods: contract.goods, palletsTotal: contract.quantity, palletsUnloaded: contract.quantity, valueReward: 0, destination: contract.destination, cargoType: GOODS[contract.goods].product });
+    game.spawnTruck({ id: truckId, carrier, ...(usingOwn && ownTruck ? { plate: ownTruck.plate } : {}), dockId: dock.id, status: 'completed', direction: 'outbound', goods: contract.goods, palletsTotal: contract.quantity, palletsUnloaded: contract.quantity, valueReward: 0, destination: contract.destination, cargoType: GOODS[contract.goods].product });
     const inventory = { ...state.inventory, [contract.goods]: { ...state.inventory[contract.goods], [contract.grade]: state.inventory[contract.goods][contract.grade] - contract.quantity } };
     set({ inventory, contracts: state.contracts.map(c => c.id === id ? { ...c, status: 'shipping', truckId } : c), notice: 'Đã chất hàng lên xe. Thanh toán khi xe hoàn tất xuất bãi.' });
     useGameStore.setState({ storageCount: totalStock(inventory) }); return true;
@@ -198,6 +209,12 @@ export const useEmpireStore = create<EmpireState>((set, get) => ({
     const inventory = Object.fromEntries(Object.entries(state.inventory).map(([key, value]) => [key, { ...value }])) as Record<Goods, CargoStock>;
     let sorted = state.sorted, produced = state.produced, cash = game.cash, reputation = game.reputation;
     let sortProgress = state.sortProgress, productionProgress = state.productionProgress;
+    let serviceRevenue = state.serviceRevenue, deliveryRevenue = state.deliveryRevenue;
+    // Phí dịch vụ kho thu từ các xe đối tác đã bốc dỡ ở nhịp trước.
+    if (game.partnerPalletsUnloaded > 0) {
+      serviceRevenue += game.partnerPalletsUnloaded * 280;
+      useGameStore.setState({ partnerPalletsUnloaded: 0 });
+    }
     const efficiency = (role: Role) => state.employees.filter(e => e.role === role).reduce((sum, e) => sum + (1 + (e.level - 1) * .15) * (.5 + e.energy / 200), 0);
     if (state.sortEnabled && efficiency('warehouse') > 0 && (state.sorterLevel > 0 || efficiency('sorter') > 0)) {
       sortProgress += delta * (state.sorterLevel * 1.5 + efficiency('sorter') * .35);
@@ -234,6 +251,7 @@ export const useEmpireStore = create<EmpireState>((set, get) => ({
     let contracts = state.contracts.map(contract => {
       if (contract.status === 'shipping' && !game.trucks.some(t => t.id === contract.truckId)) {
         cash += contract.reward; completed++; delivered += contract.quantity; reputation = Math.min(100, reputation + 1);
+        deliveryRevenue += contract.reward;
         events.push(`Đã giao ${contract.quantity} pallet cho ${contract.client}: +${money(contract.reward)}.`);
         return { ...contract, status: 'completed' as const };
       }
@@ -275,6 +293,7 @@ export const useEmpireStore = create<EmpireState>((set, get) => ({
     useGameStore.setState({ cash, reputation, storageCount: totalStock(inventory) });
     set({ inventory, contracts, employees, sorted, produced, sortProgress, productionProgress,
       contractsCompleted: completed, delivered, elapsed: state.elapsed + delta, wageClock, offerSerial, eventClock, endlessEventIndex,
+      serviceRevenue, deliveryRevenue,
       ...(eventNotice ? { notice: eventNotice } : {}),
       ...(events.length ? { log: [...events, ...state.log].slice(0, 8) } : {}) });
   },

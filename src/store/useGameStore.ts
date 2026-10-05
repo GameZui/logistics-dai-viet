@@ -51,6 +51,7 @@ interface GameState {
   forklifts: Forklift[];
   totalTrucksCompleted: number;
   lastSpawnTime: number;
+  partnerPalletsUnloaded: number;
 
   // Actions
   resetGame: () => void;
@@ -125,6 +126,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   forklifts: INITIAL_FORKLIFTS,
   totalTrucksCompleted: 12,
   lastSpawnTime: 0,
+  partnerPalletsUnloaded: 0,
 
   resetGame: () => {
     useEmpireStore.getState().resetEmpire();
@@ -142,6 +144,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       forklifts: INITIAL_FORKLIFTS.map((f) => ({ ...f })),
       totalTrucksCompleted: 0,
       lastSpawnTime: 0,
+      partnerPalletsUnloaded: 0,
     });
   },
 
@@ -287,6 +290,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       let nextStorage = state.storageCount;
       let nextCompleted = state.totalTrucksCompleted;
       let nextReputation = state.reputation;
+      let nextPartnerPallets = state.partnerPalletsUnloaded;
 
       // 1. Tự động spawn xe mới nếu ít hơn 3 xe
       const now = Date.now();
@@ -360,6 +364,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           truck.progress = truck.palletsUnloaded;
           nextCash += 280;
           nextStorage += 1;
+          // Xe đối tác vào kho bốc dỡ thì mình thu phí dịch vụ kho.
+          if ((truck.carrier ?? 'WareTrack') !== 'WareTrack') nextPartnerPallets += 1;
           useEmpireStore.getState().receiveCargo(truck.goods ?? 'rice', 1);
           if (dock) dock.storedPallets = (dock.storedPallets ?? 0) + 1;
           if (truck.palletsUnloaded >= truck.palletsTotal) {
@@ -414,6 +420,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         totalTrucksCompleted: nextCompleted,
         reputation: nextReputation,
         lastSpawnTime,
+        partnerPalletsUnloaded: nextPartnerPallets,
       };
     });
   },

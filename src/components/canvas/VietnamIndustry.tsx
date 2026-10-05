@@ -12,6 +12,22 @@ import { separateWorker } from '../../utils/crowd';
 // a gap from one another instead of walking straight through each other.
 const workerPositions = new Map<string, { id: string; x: number; z: number }>();
 
+// Damp a heading along the shortest arc so the crew turns smoothly instead of
+// snapping 180° (which read as flickering).
+const dampAngle = (current: number, target: number, k: number) => {
+  let diff = (target - current) % (Math.PI * 2);
+  if (diff > Math.PI) diff -= Math.PI * 2;
+  if (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * k;
+};
+
+// Vietnamese crew uniform palette, one identity per role.
+const ROLE_STYLE: Record<string, { uniform: string; vest: string; helmet: string; skin: string }> = {
+  sorter: { uniform: '#0f766e', vest: '#f97316', helmet: '#facc15', skin: '#f0b489' },
+  warehouse: { uniform: '#1f6f5c', vest: '#eab308', helmet: '#ffcc59', skin: '#e8a877' },
+  technician: { uniform: '#155e75', vest: '#38bdf8', helmet: '#fde047', skin: '#f2c19a' },
+};
+
 const Person = React.memo(({ employee, index }: { employee: Employee; index: number }) => {
   const group = useRef<THREE.Group>(null);
   const arms = useRef<THREE.Group>(null);
@@ -79,25 +95,26 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
       // Thủ kho: Đi kiểm kê, cầm tập hồ sơ phiếu xuất nhập kho, phân bổ các khu vực khác nhau
       hasClipboard = true;
       const subRole = index % 3;
+      const lane = Math.floor(index / 3) * 1.6;
 
       if (subRole === 0) {
         // Thủ kho chính (Chú Hùng): Đi lại kiểm tra hàng trước các bến dỡ xe tải
-        const phase = (t * 0.35) % (Math.PI * 2);
-        posX = -8 + Math.sin(phase) * 6;
+        const phase = (t * 0.35 + index * 0.7) % (Math.PI * 2);
+        posX = -8 + Math.sin(phase) * 6 + lane;
         posZ = -4.2 + Math.cos(phase) * 1.5;
         rotY = Math.cos(phase) >= 0 ? Math.PI / 2 : -Math.PI / 2;
         isWalking = true;
       } else if (subRole === 1) {
         // Thủ kho phụ 1: Đi kiểm tra dãy kệ hàng bên cánh trái
-        const phase = (t * 0.4 + 1.2) % (Math.PI * 2);
-        posX = -18 + Math.cos(phase) * 1.2;
+        const phase = (t * 0.4 + index * 0.9) % (Math.PI * 2);
+        posX = -18 + Math.cos(phase) * 1.2 - lane;
         posZ = -4.5 + Math.sin(phase) * 3.5;
         rotY = Math.cos(phase) >= 0 ? 0 : Math.PI;
         isWalking = true;
       } else {
         // Thủ kho phụ 2: Đứng kiểm định cân nặng tại bàn phân loại trung tâm
-        const phase = (t * 0.5) % (Math.PI * 2);
-        posX = 2.5 + Math.sin(phase) * 0.6;
+        const phase = (t * 0.5 + index * 1.1) % (Math.PI * 2);
+        posX = 2.5 + Math.sin(phase) * 0.6 + lane;
         posZ = -11.5 + Math.cos(phase) * 0.4;
         rotY = Math.PI;
         isWalking = Math.abs(Math.sin(phase)) > 0.3;
@@ -115,10 +132,14 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
 
     // Keep a gap from the other crew members so nobody walks through anybody.
     const settled = separateWorker(posX, posZ, workerPositions.values());
-    workerPositions.set(employee.id, { id: employee.id, x: settled.x, z: settled.z });
-
-    group.current.position.set(settled.x, 0, settled.z);
-    group.current.rotation.y = rotY;
+    const current = group.current;
+    const k = 1 - Math.pow(0.0008, Math.min(delta, 0.05) * speed);
+    current.position.x += (settled.x - current.position.x) * k;
+    current.position.z += (settled.z - current.position.z) * k;
+    current.position.y = 0;
+    // Smoothly turn (shortest arc) so the crew never snaps around.
+    current.rotation.y = dampAngle(current.rotation.y, rotY, Math.min(1, k * 1.5));
+    workerPositions.set(employee.id, { id: employee.id, x: current.position.x, z: current.position.z });
 
     if (boxInHand.current) {
       boxInHand.current.visible = isCarrying;
@@ -149,54 +170,90 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
 
   if (employee.role === 'driver') return null;
 
+  const style = ROLE_STYLE[employee.role] ?? ROLE_STYLE.warehouse;
+
   return (
     <group ref={group} position={[-12, 0, -8]}>
-      {/* Thân áo bảo hộ lao động */}
-      <mesh position={[0, 1.2, 0]} castShadow>
-        <boxGeometry args={[0.58, 0.7, 0.34]} />
-        <meshStandardMaterial color="#187663" />
+      {/* Hông & thắt lưng */}
+      <mesh position={[0, 0.98, 0]} castShadow>
+        <boxGeometry args={[0.6, 0.2, 0.36]} />
+        <meshStandardMaterial color="#334155" />
       </mesh>
-      {/* Áo phản quang nhận diện: Kỹ thuật viên (xanh), Phân loại (cam), Thủ kho (vàng) */}
-      <mesh position={[0, 1.22, 0.19]}>
-        <boxGeometry args={[0.44, 0.52, 0.035]} />
-        <meshStandardMaterial
-          color={
-            employee.role === 'technician' ? '#38bdf8' : employee.role === 'sorter' ? '#f97316' : '#eab308'
-          }
-        />
+      {/* Thân áo bảo hộ lao động */}
+      <mesh position={[0, 1.28, 0]} castShadow>
+        <boxGeometry args={[0.6, 0.62, 0.36]} />
+        <meshStandardMaterial color={style.uniform} roughness={0.9} />
+      </mesh>
+      {/* Vai áo */}
+      {[-0.36, 0.36].map((sx) => (
+        <mesh key={`shoulder-${sx}`} position={[sx, 1.55, 0]} castShadow>
+          <boxGeometry args={[0.24, 0.2, 0.34]} />
+          <meshStandardMaterial color={style.uniform} roughness={0.9} />
+        </mesh>
+      ))}
+      {/* Áo phản quang nhận diện theo vị trí */}
+      <mesh position={[0, 1.3, 0.19]}>
+        <boxGeometry args={[0.62, 0.54, 0.04]} />
+        <meshStandardMaterial color={style.vest} roughness={0.55} />
+      </mesh>
+      {/* Hai dải phản quang trắng trên áo */}
+      {[1.14, 1.44].map((sy) => (
+        <mesh key={`stripe-${sy}`} position={[0, sy, 0.215]}>
+          <boxGeometry args={[0.5, 0.05, 0.02]} />
+          <meshStandardMaterial color="#f8fafc" emissive="#e2e8f0" emissiveIntensity={0.25} />
+        </mesh>
+      ))}
+      {/* Cổ áo */}
+      <mesh position={[0, 1.62, 0]}>
+        <cylinderGeometry args={[0.11, 0.13, 0.12, 10]} />
+        <meshStandardMaterial color={style.skin} />
       </mesh>
       {/* Đầu */}
-      <mesh position={[0, 1.79, 0]}>
-        <sphereGeometry args={[0.23, 10, 8]} />
-        <meshStandardMaterial color="#fcd34d" />
+      <mesh position={[0, 1.78, 0]} castShadow>
+        <sphereGeometry args={[0.2, 14, 12]} />
+        <meshStandardMaterial color={style.skin} roughness={0.85} />
       </mesh>
-      {/* Mũ bảo hộ lao động vàng */}
-      <mesh position={[0, 1.95, 0]}>
-        <sphereGeometry args={[0.255, 10, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#ffcc59" />
+      {/* Tóc sau gáy */}
+      <mesh position={[0, 1.82, -0.05]}>
+        <sphereGeometry args={[0.205, 12, 10, 0, Math.PI * 2, 0, Math.PI / 1.6]} />
+        <meshStandardMaterial color="#1f2937" />
+      </mesh>
+      {/* Mũ bảo hộ lao động */}
+      <mesh position={[0, 1.88, 0]} castShadow>
+        <sphereGeometry args={[0.235, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color={style.helmet} roughness={0.5} />
+      </mesh>
+      {/* Vành mũ & quai mũ */}
+      <mesh position={[0, 1.84, 0.06]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 0.035, 16]} />
+        <meshStandardMaterial color={style.helmet} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 1.68, 0.02]}>
+        <boxGeometry args={[0.02, 0.16, 0.02]} />
+        <meshStandardMaterial color="#334155" />
       </mesh>
 
       {/* Kiện hàng ôm trên tay khi đang mang đi phân loại */}
-      <group ref={boxInHand} position={[0, 1.35, 0.45]} visible={false}>
+      <group ref={boxInHand} position={[0, 1.35, 0.42]} visible={false}>
         <mesh castShadow>
-          <boxGeometry args={[0.45, 0.36, 0.36]} />
+          <boxGeometry args={[0.46, 0.36, 0.36]} />
           <meshStandardMaterial color="#d97706" roughness={0.8} />
         </mesh>
         {/* Nhãn tem trắng trên kiện hàng */}
-        <mesh position={[0, 0, 0.19]}>
+        <mesh position={[0, 0.01, 0.19]}>
           <planeGeometry args={[0.2, 0.14]} />
           <meshBasicMaterial color="#ffffff" />
         </mesh>
       </group>
 
       {/* Tập hồ sơ / Phiếu xuất nhập kho kẹp nách thủ kho */}
-      <group ref={clipboard} position={[0.38, 1.1, 0.1]} visible={false}>
+      <group ref={clipboard} position={[0.4, 1.12, 0.12]} visible={false}>
         <mesh castShadow>
           <boxGeometry args={[0.04, 0.38, 0.28]} />
           <meshStandardMaterial color="#78350f" roughness={0.7} />
         </mesh>
         <mesh position={[0.022, 0.02, 0]}>
-          <boxGeometry args={[0.01, 0.32, 0.24]} />
+          <boxGeometry args={[0.012, 0.32, 0.24]} />
           <meshBasicMaterial color="#fef9c3" />
         </mesh>
       </group>
@@ -204,14 +261,15 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
       {/* Hai cánh tay */}
       <group ref={arms}>
         {[-1, 1].map((side) => (
-          <group key={side} position={[side * 0.36, 1.45, 0]}>
-            <mesh position={[0, -0.25, 0]}>
-              <boxGeometry args={[0.15, 0.55, 0.17]} />
-              <meshStandardMaterial color="#187663" />
+          <group key={side} position={[side * 0.44, 1.5, 0]}>
+            <mesh position={[0, -0.28, 0]} castShadow>
+              <boxGeometry args={[0.17, 0.56, 0.2]} />
+              <meshStandardMaterial color={style.uniform} roughness={0.9} />
             </mesh>
-            <mesh position={[0, -0.54, 0]}>
-              <sphereGeometry args={[0.09, 8, 6]} />
-              <meshStandardMaterial color="#fcd34d" />
+            {/* Bàn tay */}
+            <mesh position={[0, -0.6, 0.02]}>
+              <sphereGeometry args={[0.1, 10, 8]} />
+              <meshStandardMaterial color={style.skin} />
             </mesh>
           </group>
         ))}
@@ -220,14 +278,19 @@ const Person = React.memo(({ employee, index }: { employee: Employee; index: num
       {/* Hai chân bước đi */}
       <group ref={legs}>
         {[-1, 1].map((side) => (
-          <group key={side} position={[side * 0.16, 0.86, 0]}>
-            <mesh position={[0, -0.36, 0]}>
-              <boxGeometry args={[0.2, 0.72, 0.23]} />
-              <meshStandardMaterial color="#233b48" />
+          <group key={side} position={[side * 0.17, 0.9, 0]}>
+            <mesh position={[0, -0.32, 0]} castShadow>
+              <boxGeometry args={[0.22, 0.72, 0.25]} />
+              <meshStandardMaterial color="#233b48" roughness={0.9} />
             </mesh>
-            <mesh position={[0, -0.77, 0.07]}>
-              <boxGeometry args={[0.22, 0.16, 0.36]} />
+            {/* Giày bảo hộ mũi sắt */}
+            <mesh position={[0, -0.74, 0.08]}>
+              <boxGeometry args={[0.24, 0.18, 0.4]} />
               <meshStandardMaterial color="#0f172a" />
+            </mesh>
+            <mesh position={[0, -0.74, 0.26]}>
+              <boxGeometry args={[0.24, 0.14, 0.1]} />
+              <meshStandardMaterial color="#475569" metalness={0.6} roughness={0.3} />
             </mesh>
           </group>
         ))}

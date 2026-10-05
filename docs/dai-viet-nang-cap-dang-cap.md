@@ -324,5 +324,44 @@ Chấm 0–2 mỗi mục, mục tiêu tổng ≥ 20/24:
 - **Hàng chờ thoáng hơn**: `waitSlotX` giãn cách 9m (bắt đầu -49) và `STAGING_Z = 18`; 8 slot vẫn nằm gọn trên sân.
 - **Dọn "bánh xe trên đường"**: 3 xe máy nhân viên (khối hộp mỏng + bánh trơ) được dựng lại thành xe máy đúng hình (thân, yên, đầu xe, ghi-đông, đèn pha) để không còn trông như mấy cái bánh lăn trên đường.
 - **Khôi phục số dư khởi điểm**: working copy bị chỉnh tay `cash: 45000000` (không phải thay đổi trong kế hoạch) làm 5 test đỏ; đã trả về `45000`.
+
+### Đợt 4 — Nhân viên hết "nháy" & vẽ lại asset người
+- **Nguyên nhân nháy**: (1) nhân vật **xoay 180° tức thời** khi đổi hướng (rotY nhảy 0↔π, rõ nhất ở thủ kho) → giật/nháy; (2) nhiều nhân viên cùng vai trò dùng **trùng quỹ đạo** (`subRole = index % 3`, phase không có `index`) nên chồng khít → z-fighting nhấp nháy.
+- **Sửa nháy**: thêm `dampAngle` (xoay theo cung ngắn nhất) và **làm mượt vị trí/xoay** mỗi frame; mỗi nhân viên có **quỹ đạo riêng** (phase cộng `index`, thêm `lane` theo `index/3`) nên không còn chồng khít.
+- **Vẽ lại asset người**: có **palette riêng theo vai trò** (phân loại cam/ngọc, thủ kho vàng, kỹ thuật viên xanh); mô hình gồm thắt lưng, thân áo, vai áo, **áo phản quang có 2 dải trắng**, cổ, đầu, tóc sau gáy, **mũ bảo hộ có vành + quai**, tay có bàn tay, chân có **giày bảo hộ mũi sắt** — thay cho khối hộp thô trước đây.
+- Trạng thái: `tsc` sạch · **35/35 test pass** · `vite build` OK.
+
+### Đợt 5 — Bản đồ Việt Nam tổng thể & theo dõi đội xe liên tỉnh
+- `src/utils/vietnamMap.ts`: hình dáng Việt Nam (SVG), **12 điểm** (kho Bình Dương/Cần Thơ/Hải Phòng, cảng Đà Nẵng, các thành phố Hà Nội/Nha Trang/Đà Lạt/Tây Nguyên/Cà Mau…), **13 tuyến** (QL1A, QL14, QL20, tuyến Mekong…) và hàm nội suy vị trí xe trên tuyến (bezier + góc lái).
+- `src/store/useLogisticsStore.ts`: **đội xe tải quốc gia** chạy giữa các kho (6 xe nền, tự bù chuyến mới), tiến độ theo km/giờ nén thời gian; **đứng yên khi tạm dừng game**.
+- `src/components/ui/VietnamMapPanel.tsx`: overlay **bản đồ SVG** (nền biển, đất liền, tuyến đường nét đứt, node kho/cảng/thành phố — kho chưa mở bị làm mờ) + **xe tải chạy theo tuyến** + bảng **theo dõi từng xe** (biển số, hàng, `điểm đi → điểm đến`, % tiến độ, km còn lại, tốc độ) + danh sách **kho địa phương** (đang đứng/đã kết nối/chưa mở) + **chuyến hàng theo hợp đồng**.
+- Nối vào game: tick trong `FleetLayer`, nút **"🗺 Bản đồ Việt Nam"** ở thanh dưới cùng (`App.tsx`), CSS trong `index.css`.
+- Test mới `src/test/logistics.test.ts` (6 case). Trạng thái: `tsc` sạch · **41/41 test pass** · `vite build` OK.
+
+### Đợt 6 — Bản đồ đúng hình chữ S + 2 quần đảo Hoàng Sa & Trường Sa
+- **Bỏ hình cách điệu thô**, thay bằng **đường bờ biển/biên giới thật 43 điểm** (nguồn `johan/world.geo.json`), chiếu từ **kinh độ/vĩ độ thật** vào SVG (`project(lon, lat)`), nên ra đúng chữ S: bụng Bắc rộng, eo miền Trung thắt (~17°N), đồng bằng Nam Bộ loe, mũi Cà Mau.
+- **Toạ độ các kho/thành phố nay là toạ độ thật** (Hà Nội, Hải Phòng, Vinh, Đà Nẵng, Quảng Ngãi, Tây Nguyên, Nha Trang, Đà Lạt, Bình Dương, TP.HCM, Cần Thơ, Cà Mau) và tự khớp với đường bờ biển.
+- **Thêm 2 quần đảo**: `Hoàng Sa` (11 đảo, ~16–17°N/111–112.5°E) và `Trường Sa` (13 đảo, ~7.5–11.5°N/112–116°E) — vẽ thành cụm đảo nhỏ + nhãn + dòng chú thích "Hoàng Sa · Trường Sa là lãnh thổ Việt Nam".
+- Đã tự kiểm chứng bằng render ASCII từ chính toạ độ trong code → ra chữ S và vị trí 2 quần đảo đúng.
+- Trạng thái: `tsc` sạch · **41/41 test pass** · `vite build` OK.
+
+### Đợt 7 — Đội xe bản đồ hết "ẩn hiện ảo ma" & làm rõ mô hình doanh nghiệp
+- **Nguyên nhân nhảy/ẩn hiện**: `tickMap` xoá xe khi `progress >= 1` rồi **sinh xe mới random giữa tuyến** (random từ điểm, random tiến độ 0–0.85) → xe hiện/ẩn liên tục; tuyến cũng random khắp nước nên **không khớp mạng lưới kho** (dữ liệu "không chuẩn").
+- **Sửa**: đội xe nay **cố định số lượng, giữ nguyên id/biển số**, đi vòng liên tục trên mạng quốc lộ; **tới kho thì dừng dỡ hàng (`loading`, `dwell`) rồi rời kho trên chặng mới bắt đầu đúng tại kho đó** → không teleport, không sinh/xoá. **Ưu tiên rẽ về phía kho gần nhất** (BFS `HOPS_TO_HUB`) nên xe chạy đúng luồng nghiệp vụ.
+- **Làm rõ mô hình**: tiêu đề bản đồ đổi thành *"ĐẠI VIỆT LOGISTICS · DOANH NGHIỆP VẬN TẢI & KHO BÃI"*; mục xe ghi *"x/N xe đang chạy"* + trạng thái từng xe (*Đang chạy* / *Đang bốc dỡ tại kho*); tách rõ **đội xe đường dài** và **giao hàng theo hợp đồng**.
+- Test mới: *không thêm/bớt/teleport xe* (900 tick) và *mỗi tick xe chỉ dịch chuyển < 5px* (1200 tick). Trạng thái: `tsc` sạch · **42/42 test pass** · `vite build` OK.
+
+### Đợt 8 — Làm rõ chủ sở hữu xe (của mình vs đối tác)
+- **Quy ước**: hãng `WareTrack` = **Đại Việt (xe của bạn)**; `Nordline`/`Cargoviva`/`Bluepeak` = **xe đối tác** chở hàng tới kho.
+- **Sửa lỗi**: `shipContract` trước đây **không set hãng** nên xe rời bãi đi giao hàng bị random hãng (có lúc hàng của mình do "Mekong"/"Bắc Nam" chở) → nay luôn gán `carrier: 'WareTrack'`.
+- **Hiển thị**: `utils/labels.ts` thêm `isOwnTruck/carrierLabel/ownerLabel`; bảng chi tiết xe (`InspectorDrawer`) có badge **"Xe của Đại Việt"** / **"Xe đối tác · …"**; bản đồ ghi **"Đội xe Đại Việt"**.
+- Test mới `src/test/fleetOwnership.test.ts` (2 case). Trạng thái: `tsc` sạch · **44/44 test pass** · `vite build` OK.
+
+### Đợt 9 — Quản lý đội xe thật (mua xe, tài xế, hao mòn, dòng tiền 2 loại)
+- **Kiểu & store mới**: `src/types/fleet.ts` (3 dòng xe: mui bạt 38.000 / container 56.000 / đông lạnh 72.000) và `src/store/useFleetStore.ts` — `buyTruck`, `sellTruck`, `assignDriver`, `repairTruck`, `dispatchTruck`, `tickFleet` (hao mòn + km + tự về bãi, tụt dưới ngưỡng thì vào `maintenance`). Biển số **của công ty** (`61C-…`, `29H-…`).
+- **Điều xe vào hợp đồng**: `shipContract` giờ **ưu tiên xe của mình** (có tài xế, xe còn tốt) → xe ra bãi mang **biển số công ty**, hãng `WareTrack`; nếu chưa có xe sẵn sàng thì **thuê xe đối tác**.
+- **Dòng tiền tách riêng**: thêm `serviceRevenue` (**phí dịch vụ kho** thu từ xe đối tác vào bốc dỡ) và `deliveryRevenue` (**cước giao hàng** theo hợp đồng) vào `useEmpireStore`; `useGameStore` đếm `partnerPalletsUnloaded` khi xe đối tác dỡ hàng.
+- **UI**: tab **"Đội xe"** mới trong `EmpirePanel` (`FleetPanel.tsx`) — thẻ mua 3 dòng xe, danh sách xe (biển số, km, thanh tình trạng, trạng thái), gán **Tài xế**, nút **Sửa / Điều đi giao / Bán**, và hộp **nguồn thu 2 loại**. Vai trò `driver` đổi nhãn thành **"Tài xế"**.
+- Test mới `src/test/fleet.test.ts` (5 case). Trạng thái: `tsc` sạch · **49/49 test pass** · `vite build` OK.
 - Trạng thái: `tsc` sạch · **35/35 test pass** · `vite build` OK.
 

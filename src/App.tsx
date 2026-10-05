@@ -7,6 +7,7 @@ import { FleetDockTable } from './components/ui/FleetDockTable';
 import { InspectorDrawer } from './components/ui/InspectorDrawer';
 import { CameraControlsWidget } from './components/ui/CameraControlsWidget';
 import { EmpirePanel } from './components/ui/EmpirePanel';
+import { VietnamMapPanel } from './components/ui/VietnamMapPanel';
 import { useEmpireStore, CAMPAIGN, storyChapter } from './store/useEmpireStore';
 import { saveGame, restoreGame } from './utils/saveGame';
 
@@ -14,6 +15,7 @@ export default function App() {
   const [showPanels, setShowPanels] = useState(false);
   const [economical, setEconomical] = useState(false);
   const [showEmpire, setShowEmpire] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const restored = useRef(false);
   const notice = useEmpireStore(s => s.notice);
   const chapter = useEmpireStore(s => s.chapter);
@@ -40,6 +42,9 @@ export default function App() {
       {/* Floating Camera Controls */}
       <CameraControlsWidget />
 
+      {/* National Vietnam map & inter-city fleet tracker */}
+      {showMap && <VietnamMapPanel onClose={() => setShowMap(false)} />}
+
       {/* Right Side Inspector Drawer */}
       {!showEmpire && <InspectorDrawer />}
       {showEmpire && <EmpirePanel onClose={() => setShowEmpire(false)} />}
@@ -54,6 +59,7 @@ export default function App() {
         {showPanels ? 'Ẩn bảng điều hành' : 'Mở bảng điều hành'}
       </button>
       <button onClick={() => setShowEmpire(!showEmpire)} className="primary-button">{showEmpire ? 'Đóng quản lý' : 'Quản lý doanh nghiệp'}</button>
+      <button onClick={() => setShowMap(!showMap)} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">🗺 {showMap ? 'Đóng bản đồ' : 'Bản đồ Việt Nam'}</button>
       <button onClick={() => setEconomical(!economical)} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">
         {economical ? '⚡ Ưu tiên hiệu năng' : '◉ Đồ họa tiêu chuẩn'}
       </button>

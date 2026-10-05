@@ -1,6 +1,6 @@
 import { X, Zap, Wrench, Plus } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
-import { truckLabels, dockLabels, forkliftLabels, carrierNames } from '../../utils/labels';
+import { truckLabels, dockLabels, forkliftLabels, carrierNames, carrierLabel, isOwnTruck, ownerLabel } from '../../utils/labels';
 import { money } from '../../store/useEmpireStore';
 
 export const InspectorDrawer = () => {
@@ -15,6 +15,7 @@ export const InspectorDrawer = () => {
     {truck && <>
       <img className="inspector-truck-art" src={truck.direction === 'outbound' ? '/assets/truck-container.webp' : truck.goods === 'electronics' ? '/assets/truck-reefer.webp' : '/assets/truck-vietnam.webp'} alt="Minh họa xe vận tải hàng Việt Nam" loading="lazy" />
       <div className="status-banner">{truckLabels[truck.status]}</div>
+      <div className={isOwnTruck(truck.carrier) ? 'owner-badge self' : 'owner-badge partner'}>{ownerLabel(truck.carrier)}</div>
       <dl><dt>Đơn vị vận tải</dt><dd>{carrierNames[truck.carrier]}</dd><dt>Điểm đến</dt><dd>{truck.destination}</dd><dt>Loại hàng</dt><dd>{truck.cargoType}</dd><dt>Cửa kho</dt><dd>{truck.dockId ? `Số ${state.docks.find(d => d.id === truck.dockId)?.number}` : 'Đang chờ'}</dd><dt>{truck.direction === 'outbound' ? 'Đã chất' : 'Đã dỡ'}</dt><dd>{truck.palletsUnloaded}/{truck.palletsTotal} pallet</dd><dt>Thưởng chuyến</dt><dd>{money(truck.valueReward)}</dd></dl>
       <div className="cargo-progress"><span style={{ width: `${truck.palletsUnloaded / truck.palletsTotal * 100}%` }} /></div>
       <button className="primary-button w-full" disabled={truck.isVip || truck.status === 'completed' || state.cash < 500} onClick={() => state.prioritizeTruck(truck.id)}><Zap size={16} />{truck.isVip ? 'Đã ưu tiên' : `Ưu tiên · ${money(500)}`}</button>

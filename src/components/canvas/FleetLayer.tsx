@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../store/useGameStore';
+import { useLogisticsStore } from '../../store/useLogisticsStore';
+import { useFleetStore } from '../../store/useFleetStore';
 import { TruckMesh } from './TruckMesh';
 import { ForkliftMesh } from './ForkliftMesh';
 
@@ -14,6 +16,10 @@ export const FleetLayer = () => {
     elapsed.current += Math.min(delta, 0.1);
     if (elapsed.current >= 0.1) {
       tickSimulation(elapsed.current);
+      // Advance the national (inter-city) fleet on the Vietnam map.
+      useLogisticsStore.getState().tickMap(elapsed.current);
+      // Wear and return the company's own trucks.
+      useFleetStore.getState().tickFleet(elapsed.current);
       elapsed.current = 0;
     }
   });

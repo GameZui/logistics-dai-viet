@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { X, BookOpen, Users, Factory, Warehouse, FileCheck, Package, MapPin, Save } from 'lucide-react';
+import { X, BookOpen, Users, Factory, Warehouse, FileCheck, Package, MapPin, Save, Truck } from 'lucide-react';
 import { useEmpireStore, CAMPAIGN, GOODS, ROLES, chapterReady, money, totalStock, storyChapter } from '../../store/useEmpireStore';
 import { HUBS, useGameStore } from '../../store/useGameStore';
+import { FleetPanel } from './FleetPanel';
 import { Goods, Role } from '../../types/empire';
 import { saveGame } from '../../utils/saveGame';
 
 const tabs = [
   { id: 'story', label: 'Hành trình', icon: BookOpen }, { id: 'staff', label: 'Nhân sự', icon: Users },
   { id: 'build', label: 'Xây dựng', icon: Warehouse }, { id: 'factory', label: 'Nhà máy', icon: Factory },
+  { id: 'fleet', label: 'Đội xe', icon: Truck },
   { id: 'stock', label: 'Hàng hóa', icon: Package }, { id: 'contracts', label: 'Hợp đồng', icon: FileCheck },
   { id: 'network', label: 'Chi nhánh', icon: MapPin },
 ] as const;
@@ -79,6 +81,7 @@ export const EmpirePanel = ({ onClose }: { onClose: () => void }) => {
           {contract.status === 'active' ? <button className="primary-button" disabled={!ready} onClick={() => state.shipContract(contract.id)}>Xuất hàng theo hợp đồng</button> : contract.status === 'shipping' ? <p className="shipping-note">Xe đang xuất bãi · Còn {Math.ceil(contract.remaining)} giây để hoàn tất.</p> : <button className="secondary-button" onClick={() => state.acceptContract(contract.id)}>{contract.status === 'available' ? 'Ký hợp đồng' : 'Ký lại hợp đồng'}</button>}</div>;
         })}
       </>}
+      {tab === 'fleet' && <FleetPanel />}
       {tab === 'network' && <>
         <h3>Mạng lưới Đại Việt</h3><p>Các chi nhánh dùng chung hàng hóa, nhân sự và vốn của tập đoàn. Chọn trung tâm trên thanh điều hành để xem nhận diện vùng và chuyển thị trường nhập hàng.</p>
         {HUBS.map(hub => {
