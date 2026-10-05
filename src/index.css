@@ -50,10 +50,12 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .owner-badge.partner { background:#fdeed7; color:#a16207; }
 
 /* Đội xe (fleet management) */
-.money-split { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:14px 0; }
+.money-split { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0; }
 .money-split > div { background:#fff; border:1px solid #e2ebf2; border-radius:12px; padding:12px; }
 .money-split small { display:block; font-size:9px; letter-spacing:.8px; font-weight:700; color:#8394a0; }
-.money-split strong { display:block; margin-top:4px; font-size:16px; color:#176858; }
+.money-split strong { display:block; margin-top:4px; font-size:15px; color:#176858; }
+.money-split strong.cost { color:#ba6051; }
+.fleet-incident { display:flex; align-items:center; gap:8px; margin:12px 0; padding:10px 12px; border-radius:10px; background:#fdecea; color:#a1392a; font-size:11px; font-weight:600; }
 .fleet-buy-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
 .fleet-buy-card { display:flex; flex-direction:column; align-items:center; gap:6px; background:#fff; border:1px solid #e2ebf2; border-radius:12px; padding:12px; text-align:center; }
 .fleet-buy-card img { width:100%; height:64px; object-fit:contain; }

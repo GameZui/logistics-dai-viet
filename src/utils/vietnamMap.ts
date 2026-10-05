@@ -160,3 +160,32 @@ export function pointOnRoute(from: MapLocation, to: MapLocation, t: number): Rou
   const dy = 2 * mt * (c.y - from.y) + 2 * clamped * (to.y - c.y);
   return { x, y, angle: Math.atan2(dy, dx) };
 }
+
+// Tên điểm đến ghi trên hợp đồng → điểm trên bản đồ.
+const CITY_ALIASES: Record<string, string> = {
+  'Cần Thơ': 'can-tho',
+  'Buôn Ma Thuột': 'tay-nguyen',
+  'Gia Lai': 'tay-nguyen',
+  'TP. Hồ Chí Minh': 'hcm',
+  'Vũng Tàu': 'hcm',
+  'Long An': 'hcm',
+  'Biên Hòa': 'binh-duong',
+  'Bình Dương': 'binh-duong',
+  'Đà Nẵng': 'da-nang',
+  'Huế': 'da-nang',
+  'Hải Phòng': 'hai-phong',
+  'Đà Lạt': 'da-lat',
+  'Nha Trang': 'nha-trang',
+  'Quy Nhơn': 'quang-ngai',
+};
+
+export function locationForCity(name: string): MapLocation | undefined {
+  const direct = CITY_ALIASES[name];
+  if (direct) return locationById(direct);
+  return LOCATIONS.find((location) => location.name.includes(name) || name.includes(location.name));
+}
+
+export function locationForHub(hubId: string): MapLocation | undefined {
+  return LOCATIONS.find((location) => location.hubId === hubId);
+}
+

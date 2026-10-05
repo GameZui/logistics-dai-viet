@@ -52,6 +52,7 @@ interface GameState {
   totalTrucksCompleted: number;
   lastSpawnTime: number;
   partnerPalletsUnloaded: number;
+  fleetOperatingCost: number;
 
   // Actions
   resetGame: () => void;
@@ -127,6 +128,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   totalTrucksCompleted: 12,
   lastSpawnTime: 0,
   partnerPalletsUnloaded: 0,
+  fleetOperatingCost: 0,
 
   resetGame: () => {
     useEmpireStore.getState().resetEmpire();
@@ -145,6 +147,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       totalTrucksCompleted: 0,
       lastSpawnTime: 0,
       partnerPalletsUnloaded: 0,
+      fleetOperatingCost: 0,
     });
   },
 

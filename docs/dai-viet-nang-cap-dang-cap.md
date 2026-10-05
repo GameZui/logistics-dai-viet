@@ -363,5 +363,12 @@ Chấm 0–2 mỗi mục, mục tiêu tổng ≥ 20/24:
 - **Dòng tiền tách riêng**: thêm `serviceRevenue` (**phí dịch vụ kho** thu từ xe đối tác vào bốc dỡ) và `deliveryRevenue` (**cước giao hàng** theo hợp đồng) vào `useEmpireStore`; `useGameStore` đếm `partnerPalletsUnloaded` khi xe đối tác dỡ hàng.
 - **UI**: tab **"Đội xe"** mới trong `EmpirePanel` (`FleetPanel.tsx`) — thẻ mua 3 dòng xe, danh sách xe (biển số, km, thanh tình trạng, trạng thái), gán **Tài xế**, nút **Sửa / Điều đi giao / Bán**, và hộp **nguồn thu 2 loại**. Vai trò `driver` đổi nhãn thành **"Tài xế"**.
 - Test mới `src/test/fleet.test.ts` (5 case). Trạng thái: `tsc` sạch · **49/49 test pass** · `vite build` OK.
+
+### Đợt 10 — Nối đội xe lên bản đồ + chi phí vận hành + nâng cấp xe & sự cố
+- **Đội xe ↔ bản đồ**: khi xuất hàng theo hợp đồng, hệ thống tra `locationForHub(currentHub)` và `locationForCity(contract.destination)` rồi **sinh một xe trên bản đồ Việt Nam chạy đúng tuyến**, mang **biển số công ty** nếu là xe của mình. Xe trên bản đồ có `kind: 'ambient' | 'shipment'` — chuyến hợp đồng **tới nơi thì rời bản đồ**, đoàn xe đường dài vẫn chạy vòng liên tục.
+- **Chi phí vận hành**: mỗi chuyến về bãi bị trừ **dầu theo km** (`fuelPer100km` theo dòng xe) + **lương tài xế** (260/chuyến) + **bảo hiểm** (500–1.100/chuyến). Tổng chi phí luỹ kế hiện ở `useGameStore.fleetOperatingCost` và bảng "CHI PHÍ VẬN HÀNH" trong tab Đội xe.
+- **Nâng cấp xe**: mỗi xe có **cấp 1→3** (`upgradeTruck`); cấp cao **hao mòn ít hơn** (0,85 → 0,6 → 0,4 mỗi km) và **giảm rủi ro sự cố** 30%/cấp.
+- **Sự cố dọc đường**: xác suất theo km × độ cũ × cấp xe → xe hỏng giữa đường, tụt 30% tình trạng, vào `maintenance`, hiện cảnh báo ở tab Đội xe (`lastIncident`).
+- Test mới/cập nhật: `fleet.test.ts` (8 case, có `vi.spyOn(Math,'random')` để tất định hoá sự cố) và `logistics.test.ts` (7 case). Trạng thái: `tsc` sạch · **54/54 test pass** · `vite build` OK.
 - Trạng thái: `tsc` sạch · **35/35 test pass** · `vite build` OK.
 

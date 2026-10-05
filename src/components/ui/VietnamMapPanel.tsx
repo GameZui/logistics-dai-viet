@@ -95,7 +95,7 @@ export const VietnamMapPanel = ({ onClose }: { onClose: () => void }) => {
                   <div className="map-truck-row" key={truck.id}>
                     <div className="map-row-top">
                       <strong>{truck.plate}</strong>
-                      <span>{truck.cargo}</span>
+                      <span>{truck.cargo}{truck.kind === 'shipment' ? ' · chuyến hợp đồng' : ''}</span>
                     </div>
                     <div className="map-row-route">
                       <span>{from?.name ?? truck.from}</span>

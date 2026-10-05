@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { useGameStore } from './useGameStore';
 import { useFleetStore } from './useFleetStore';
+import { useLogisticsStore } from './useLogisticsStore';
 import { CargoStock, Contract, Employee, Goods, Role } from '../types/empire';
 import { Carrier } from '../types/game';
 import { MIN_CONDITION } from '../types/fleet';
+import { locationForCity, locationForHub } from '../utils/vietnamMap';
 import { playCoin, playFanfare } from '../utils/audio';
 
 export const GOODS: Record<Goods, { label: string; product: string; color: string }> = {
@@ -191,7 +193,12 @@ export const useEmpireStore = create<EmpireState>((set, get) => ({
     const partners: Carrier[] = ['Nordline', 'Cargoviva', 'Bluepeak'];
     const carrier: Carrier = usingOwn ? 'WareTrack' : partners[Math.floor(Math.random() * partners.length)];
     const truckId = `xuat-${contract.id}-${Math.round(state.elapsed * 1000)}`;
-    game.spawnTruck({ id: truckId, carrier, ...(usingOwn && ownTruck ? { plate: ownTruck.plate } : {}), dockId: dock.id, status: 'completed', direction: 'outbound', goods: contract.goods, palletsTotal: contract.quantity, palletsUnloaded: contract.quantity, valueReward: 0, destination: contract.destination, cargoType: GOODS[contract.goods].product });
+    const ownPlate = usingOwn && ownTruck ? ownTruck.plate : undefined;
+    game.spawnTruck({ id: truckId, carrier, ...(ownPlate ? { plate: ownPlate } : {}), dockId: dock.id, status: 'completed', direction: 'outbound', goods: contract.goods, palletsTotal: contract.quantity, palletsUnloaded: contract.quantity, valueReward: 0, destination: contract.destination, cargoType: GOODS[contract.goods].product });
+    // Đưa chuyến giao hàng lên bản đồ Việt Nam (xe của mình hiện đúng biển số công ty).
+    const mapFrom = locationForHub(game.currentHub);
+    const mapTo = locationForCity(contract.destination);
+    if (mapFrom && mapTo) useLogisticsStore.getState().spawnShipment(mapFrom.id, mapTo.id, GOODS[contract.goods].label, ownPlate);
     const inventory = { ...state.inventory, [contract.goods]: { ...state.inventory[contract.goods], [contract.grade]: state.inventory[contract.goods][contract.grade] - contract.quantity } };
     set({ inventory, contracts: state.contracts.map(c => c.id === id ? { ...c, status: 'shipping', truckId } : c), notice: 'Đã chất hàng lên xe. Thanh toán khi xe hoàn tất xuất bãi.' });
     useGameStore.setState({ storageCount: totalStock(inventory) }); return true;

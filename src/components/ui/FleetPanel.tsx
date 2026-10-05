@@ -1,8 +1,8 @@
-import { Truck, Wrench, CircleDollarSign } from 'lucide-react';
+import { Truck, Wrench, CircleDollarSign, ArrowUpCircle, AlertTriangle } from 'lucide-react';
 import { useFleetStore } from '../../store/useFleetStore';
 import { useEmpireStore, money } from '../../store/useEmpireStore';
 import { useGameStore } from '../../store/useGameStore';
-import { MIN_CONDITION, TRUCK_MODELS } from '../../types/fleet';
+import { MAX_TRUCK_LEVEL, MIN_CONDITION, TRUCK_MODELS, upgradeCost } from '../../types/fleet';
 
 const statusLabel = { available: 'Sẵn sàng', delivering: 'Đang giao', maintenance: 'Cần bảo dưỡng' } as const;
 
@@ -10,6 +10,7 @@ export const FleetPanel = () => {
   const fleet = useFleetStore();
   const state = useEmpireStore();
   const cash = useGameStore((s) => s.cash);
+  const operatingCost = useGameStore((s) => s.fleetOperatingCost);
   const drivers = state.employees.filter((employee) => employee.role === 'driver');
 
   return (
@@ -20,9 +21,12 @@ export const FleetPanel = () => {
         <b> Xe mình đi giao</b> ăn cước hợp đồng; <b>xe đối tác vào kho</b> thì mình thu phí dịch vụ bốc dỡ.
       </p>
 
+      {fleet.lastIncident && <div className="fleet-incident"><AlertTriangle size={14} />{fleet.lastIncident}</div>}
+
       <div className="money-split">
         <div><small>PHÍ DỊCH VỤ KHO</small><strong>{money(state.serviceRevenue)}</strong></div>
         <div><small>CƯỚC GIAO HÀNG</small><strong>{money(state.deliveryRevenue)}</strong></div>
+        <div><small>CHI PHÍ VẬN HÀNH</small><strong className="cost">-{money(operatingCost)}</strong></div>
       </div>
 
       <div className="fleet-buy-grid">
@@ -54,8 +58,9 @@ export const FleetPanel = () => {
               <small>{model.label} · {Math.round(truck.odometerKm).toLocaleString('vi-VN')} km</small>
               <div className="cargo-progress"><span style={{ width: `${truck.condition}%` }} /></div>
               <small>
-                Tình trạng xe {Math.round(truck.condition)}%
+                Cấp {truck.level}/{MAX_TRUCK_LEVEL} · Tình trạng {Math.round(truck.condition)}%
                 {truck.status === 'maintenance' ? ' · cần sửa trước khi chạy' : ''}
+                {busy ? ` · chuyến ${Math.round(truck.tripKm)} km` : ''}
               </small>
               <label className="fleet-driver">
                 Tài xế
@@ -69,6 +74,9 @@ export const FleetPanel = () => {
                 </select>
               </label>
               <div className="fleet-actions">
+                <button className="secondary-button" disabled={busy || truck.level >= MAX_TRUCK_LEVEL || cash < upgradeCost(model, truck.level)} onClick={() => fleet.upgradeTruck(truck.id)}>
+                  <ArrowUpCircle size={13} />{truck.level >= MAX_TRUCK_LEVEL ? 'Cấp tối đa' : `Nâng cấp · ${money(upgradeCost(model, truck.level))}`}
+                </button>
                 <button className="secondary-button" disabled={busy || cash < model.repair} onClick={() => fleet.repairTruck(truck.id)}>
                   <Wrench size={13} />Sửa · {money(model.repair)}
                 </button>

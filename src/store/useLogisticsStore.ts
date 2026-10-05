@@ -2,13 +2,13 @@ import { create } from 'zustand';
 import { useGameStore } from './useGameStore';
 import { ROUTES, MapRoute } from '../utils/vietnamMap';
 
-// Đội xe đường dài của Đại Việt Logistics: mỗi xe đi vòng liên tục trên mạng
-// quốc lộ, luôn hướng về kho địa phương, tới kho thì dỡ hàng rồi đi tiếp —
-// không teleport và không sinh/xoá xe giữa chừng.
+// Đội xe trên bản đồ: đoàn xe đường dài chạy vòng liên tục giữa các kho
+// (kind 'ambient'), cùng các chuyến giao hàng thật theo hợp đồng (kind 'shipment').
 export interface MapTruck {
   id: string;
   plate: string;
   cargo: string;
+  kind: 'ambient' | 'shipment';
   from: string;
   to: string;
   progress: number; // 0 -> 1 along the current leg
@@ -58,7 +58,7 @@ const HOPS_TO_HUB = new Map<string, number>();
 
 let serial = 0;
 const pick = <T,>(items: T[]): T => items[Math.floor(Math.random() * items.length)];
-const randomPlate = () => `${pick(PLATE_PREFIX)}-${100 + Math.floor(Math.random() * 899)}.${String(10 + Math.floor(Math.random() * 89))}`;
+const randomPlate = () => `${pick(PLATE_PREFIX)}-${100 + Math.floor(Math.random() * 899)}.${10 + Math.floor(Math.random() * 89)}`;
 
 // Chọn chặng kế tiếp: ưu tiên hướng về kho, không quay đầu, không nhảy cóc.
 function nextLeg(from: string, cameFrom?: string) {
@@ -70,13 +70,14 @@ function nextLeg(from: string, cameFrom?: string) {
   return { route: chosen.route, to: chosen.next };
 }
 
-function newTruck(from: string): MapTruck {
+function newAmbient(from: string): MapTruck {
   const { route, to } = nextLeg(from);
   serial += 1;
   return {
     id: `mt-${serial}`,
     plate: randomPlate(),
     cargo: pick(CARGO),
+    kind: 'ambient',
     from,
     to,
     progress: 0,
@@ -95,51 +96,60 @@ const START_NODES = [
   ...neighbours('hai-phong').map((option) => option.next),
 ];
 
+const seedTrucks = (count: number) =>
+  Array.from({ length: count }, (_, index) => {
+    const truck = newAmbient(START_NODES[index % START_NODES.length]);
+    // Trải đều đoàn xe ban đầu dọc tuyến (chỉ áp dụng cho trạng thái khởi tạo).
+    truck.progress = (index * 0.31) % 0.9;
+    return truck;
+  });
+
 interface LogisticsState {
   trucks: MapTruck[];
-  spawnShipment: (from: string, to: string, cargo?: string) => void;
+  spawnShipment: (from: string, to: string, cargo?: string, plate?: string) => void;
+  seedAmbient: (count: number) => void;
   tickMap: (delta: number) => void;
 }
 
 export const useLogisticsStore = create<LogisticsState>((set) => ({
-  trucks: Array.from({ length: FLEET_SIZE }, (_, index) => {
-    const truck = newTruck(START_NODES[index % START_NODES.length]);
-    // Trải đều đoàn xe ban đầu dọc tuyến (chỉ áp dụng cho trạng thái khởi tạo).
-    truck.progress = (index * 0.31) % 0.9;
-    return truck;
-  }),
+  trucks: seedTrucks(FLEET_SIZE),
 
-  spawnShipment: (from, to, cargo) => {
+  seedAmbient: (count) => set({ trucks: seedTrucks(count) }),
+
+  spawnShipment: (from, to, cargo, plate) => {
     const route = ROUTES.find(
       (item) => (item.from === from && item.to === to) || (item.from === to && item.to === from),
     );
     serial += 1;
-    const truck: MapTruck = {
-      id: `mt-${serial}`,
-      plate: randomPlate(),
-      cargo: cargo ?? pick(CARGO),
-      from,
-      to,
-      progress: 0,
-      distanceKm: route?.distanceKm ?? 320,
-      speedKmh: 52,
-      status: 'in_transit',
-      dwell: 0,
-    };
-    set((state) => ({ trucks: [...state.trucks, truck] }));
+    set((state) => ({
+      trucks: [...state.trucks, {
+        id: `ship-${serial}`,
+        plate: plate ?? randomPlate(),
+        cargo: cargo ?? pick(CARGO),
+        kind: 'shipment' as const,
+        from,
+        to,
+        progress: 0,
+        distanceKm: route?.distanceKm ?? 320,
+        speedKmh: 52,
+        status: 'in_transit' as const,
+        dwell: 0,
+      }],
+    }));
   },
 
   tickMap: (delta) => {
     if (useGameStore.getState().gameSpeed === 0) return;
     const step = delta * useGameStore.getState().gameSpeed;
     set((state) => ({
-      trucks: state.trucks.map((truck) => {
+      trucks: state.trucks.flatMap((truck) => {
         if (truck.status === 'loading') {
           const dwell = truck.dwell - step;
-          if (dwell > 0) return { ...truck, dwell };
-          // Rời kho trên chặng mới, bắt đầu đúng tại kho vừa dỡ (giữ nguyên id/biển số).
+          if (dwell > 0) return [{ ...truck, dwell }];
+          // Chuyến giao hàng kết thúc thì rời bản đồ; xe đường dài lại chạy tiếp.
+          if (truck.kind === 'shipment') return [];
           const leg = nextLeg(truck.to, truck.from);
-          return {
+          return [{
             ...truck,
             from: truck.to,
             to: leg.to,
@@ -149,12 +159,12 @@ export const useLogisticsStore = create<LogisticsState>((set) => ({
             cargo: pick(CARGO),
             status: 'in_transit' as const,
             dwell: 0,
-          };
+          }];
         }
         const progress = truck.progress + (step * HOURS_PER_SECOND * truck.speedKmh) / truck.distanceKm;
-        if (progress < 1) return { ...truck, progress };
+        if (progress < 1) return [{ ...truck, progress }];
         // Tới kho: dỡ hàng tại chỗ trước khi nhận chặng mới.
-        return { ...truck, progress: 1, status: 'loading' as const, dwell: DWELL_SECONDS };
+        return [{ ...truck, progress: 1, status: 'loading' as const, dwell: DWELL_SECONDS }];
       }),
     }));
   },
